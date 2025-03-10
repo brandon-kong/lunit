@@ -1,5 +1,5 @@
-import { flatten, getAnnotation, getClassMetadata, hasMetadata } from "./utils";
-import { Annotation, Constructor, Metadata, TestMethod } from "./common";
+import { getDescendantsOfType, flatten, getAnnotation, getClassMetadata, hasMetadata } from "./utils";
+import { Annotation, Constructor, Metadata, TestMethod, DEFAULT_ORDER } from "./common";
 import { StringBuilder } from "@rbxts/string-builder";
 
 type TestClassInstance = Record<string, Callback>;
@@ -21,22 +21,6 @@ interface TestCaseResult {
 	readonly timeElapsed: number;
 }
 
-function getDescendantsOfType<T extends keyof Instances, I extends Instances[T] = Instances[T]>(
-	root: Instance,
-	...classNames: T[]
-): I[] {
-	const res: I[] = [];
-
-	for (const className of classNames) {
-		for (const descendant of root.GetDescendants()) {
-			if (descendant.ClassName === className) {
-				res.push(descendant as I);
-			}
-		}
-	}
-
-	return res;
-}
 
 export class TestRunner {
 	private readonly testClasses: [TestClassConstructor, TestClassInstance][];
@@ -46,7 +30,7 @@ export class TestRunner {
 	private passedTests: number;
 	private skippedTests: number;
 
-	public constructor(roots: Instance[], options?: object) {
+	public constructor(roots: Instance[], _?: object) {
 		this.testClasses = new Array<[TestClassConstructor, TestClassInstance]>();
 		this.results = new Map<TestClassConstructor, Map<TestMethod, TestCaseResult>>();
 		this.failedTests = 0;
@@ -66,9 +50,9 @@ export class TestRunner {
 		const testClass = <TestClassConstructor>ctor;
 		const newClass = <TestClassInstance>new ctor();
 
-		//if (newClass.setUp !== undefined) {
-		//	newClass.setUp(newClass);
-		//}
+		if (newClass.setUp !== undefined) {
+			newClass.setUp(newClass);
+		}
 
 		this.testClasses.push([testClass, newClass]);
 	}
@@ -81,18 +65,18 @@ export class TestRunner {
 		for (const [testClass, testClassInstance] of this.testClasses) {
 			// run beforeAll here
 
-			Promise.try(() => {
+			await Promise.try(() => {
 				const beforeAllCallbacks = getAnnotation(testClass, Annotation.BeforeAll);
 				beforeAllCallbacks.forEach((callback) => callback());
 			})
-				.catch(() => {})
+                .catch(() => {})
 				.finally(() => {
 					const runClass = this.runTestClass(testClass, testClassInstance);
 
 					runClass.forEach((promise) => {
 						promisesToResolve.push(promise);
 					});
-				});
+				})
 		}
 
 		await Promise.all(promisesToResolve).then(() => {
@@ -109,10 +93,15 @@ export class TestRunner {
 		const res = new Array<TestMethod>();
 		list.forEach((val) => {
 			// make sure each TestMethod isATest
-			if (val.options?.isATest === true) {
+			if (val.options.isATest === true) {
 				res.push(val);
 			}
 		});
+
+        // Order the tests by the order where the default order is 999
+        res.sort((a, b) => {
+            return (a.options.order || DEFAULT_ORDER) <= (b.options.order || DEFAULT_ORDER);
+        })
 
 		return res;
 	}
@@ -169,13 +158,34 @@ export class TestRunner {
 		const testList = this.getTestsFromTestClass(testClass);
 
 		const testPromises = testList.map(async (test) => {
-			const beforeEachCallbacks = getAnnotation(testClass, Annotation.BeforeEach);
-			beforeEachCallbacks.forEach((callback) => callback(testClassInstance));
-			// skip the test before it can be executed
-			if (test.options?.disabled?.value === true) {
-				skip(test, { timeElapsed: 0 });
+
+           await Promise.try(() => {
+                const beforeEachCallbacks = getAnnotation(testClass, Annotation.BeforeEach);
+			    beforeEachCallbacks.forEach((callback) => callback(testClassInstance));
+
+            })
+            .catch(() => {});
+          
+
+          // skip the test before it can be executed
+		    if (test.options.disabled?.value === true) {
+			    skip(test, { timeElapsed: 0 });
 				return Promise.resolve();
-			}
+		    }
+
+            if (test.options.scope !== undefined) {
+                const testScope = test.options.scope;
+
+                const runService = game.GetService("RunService");
+                const isClientScope = runService.IsClient();
+
+                if ((isClientScope === false && testScope === "Client") || (isClientScope === true && testScope === "Server")) {
+                    skip(test, { timeElapsed: 0 });
+                    return Promise.resolve();
+                }
+            }
+
+	
 			const callback = <Callback>(testClass as unknown as TestClassType)[test.name];
 			const res = runTestCase(() => callback(testClassInstance), test);
 
@@ -224,7 +234,7 @@ export class TestRunner {
 				const [testCaseMetadata, testCase] = testResult;
 
 				// get the testCase metadata properties
-				const testDisabledOptions = testCaseMetadata.options?.disabled;
+				const testDisabledOptions = testCaseMetadata.options.disabled;
 
 				const passed = testCase.errorMessage === undefined;
 				const timeElapsed = testCase.timeElapsed;
@@ -234,11 +244,11 @@ export class TestRunner {
 
 				if (testDisabledOptions?.value === true) {
 					results.appendLine(
-						`\t${isLast ? "└" : "├"}── [${getSymbol(passed, testDisabledOptions.value)}] ${testCaseMetadata.options?.displayName ?? testCaseMetadata.name} (SKIPPED: ${testDisabledOptions.message})`,
+						`\t${isLast ? "└" : "├"}── [${getSymbol(passed, testDisabledOptions.value)}] ${testCaseMetadata.options.displayName ?? testCaseMetadata.name} (SKIPPED: ${testDisabledOptions.message})`,
 					);
 				} else {
 					results.appendLine(
-						`\t${isLast ? "└" : "├"}── [${getSymbol(passed)}] ${testCaseMetadata.options?.displayName ?? testCaseMetadata.name} (${math.round(timeElapsed * 1000)}ms) ${!passed ? "FAILED" : ""}`,
+						`\t${isLast ? "└" : "├"}── [${getSymbol(passed)}] ${testCaseMetadata.options.displayName ?? testCaseMetadata.name} (${math.round(timeElapsed * 1000)}ms) ${!passed ? "FAILED" : ""}`,
 					);
 				}
 			});

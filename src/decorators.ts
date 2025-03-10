@@ -1,4 +1,4 @@
-import { Annotation, TestMetadataOptions, Scope } from "./common";
+import { Annotation, TestMetadataOptions, Scope, DEFAULT_ORDER } from "./common";
 import { addTest, addAnnotations, addClassMetadata } from "./utils";
 
 type DecoratorOptions = {
@@ -26,7 +26,7 @@ function createAnnotation(annotation: Annotation) {
 	return createDecorator({ annotation });
 }
 
-export const Test = createDecorator({ options: { isATest: true } });
+export const Test = createDecorator({ options: { isATest: true, order: DEFAULT_ORDER } });
 export const Disabled = (message?: string) => createDecorator({ options: { disabled: { value: true, message } } });
 export const DisplayName = (name: string) => createDecorator({ options: { displayName: name } });
 export const Timeout = (timeInMilliseconds: number) => createDecorator({ options: { timeout: timeInMilliseconds } });

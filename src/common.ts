@@ -1,6 +1,6 @@
 export type TestMethod = {
 	name: string;
-	options?: TestMetadataOptions;
+	options: TestMetadataOptions;
 };
 
 export enum Annotation {
@@ -32,3 +32,5 @@ export type TestMetadataOptions = {
 	timeout?: number;
 	order?: number;
 };
+
+export const DEFAULT_ORDER: number = 999;
