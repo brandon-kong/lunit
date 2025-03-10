@@ -26,7 +26,7 @@ function createAnnotation(annotation: Annotation) {
 	return createDecorator({ annotation });
 }
 
-export const Test = createDecorator({});
+export const Test = createDecorator({ options: { isATest: true } });
 export const Disabled = (message?: string) => createDecorator({ options: { disabled: { value: true, message } } });
 export const DisplayName = (name: string) => createDecorator({ options: { displayName: name } });
 export const Timeout = (timeInMilliseconds: number) => createDecorator({ options: { timeout: timeInMilliseconds } });

@@ -34,11 +34,19 @@ export function addTest<T extends object>(ctor: T, testName: string, options: Te
 
 		const foundOptions = map.get(testName);
 
+		if (foundOptions !== undefined && foundOptions?.options === undefined) {
+			foundOptions.options = {};
+		}
+
 		if (foundOptions !== undefined) {
 			// create combined options
 			(options as Map<string, unknown>).forEach((value, key) => {
-				(foundOptions as Record<string, unknown>)[key] = value;
+				if (foundOptions.options !== undefined) {
+					(foundOptions.options as Record<string, unknown>)[key] = value;
+				}
 			});
+
+			map.set(testName, foundOptions);
 		} else
 			map.set(testName, {
 				name: testName,

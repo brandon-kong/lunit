@@ -44,14 +44,16 @@ export class TestRunner {
 
 	private failedTests: number;
 	private passedTests: number;
+	private skippedTests: number;
 
-	public constructor(...args: Instance[]) {
+	public constructor(roots: Instance[], options?: object) {
 		this.testClasses = new Array<[TestClassConstructor, TestClassInstance]>();
 		this.results = new Map<TestClassConstructor, Map<TestMethod, TestCaseResult>>();
 		this.failedTests = 0;
 		this.passedTests = 0;
+		this.skippedTests = 0;
 
-		const modules = flatten(args.map((root) => getDescendantsOfType(root, "ModuleScript")));
+		const modules = flatten(roots.map((root) => getDescendantsOfType(root, "ModuleScript")));
 		for (const module of modules) {
 			const testClass = <Constructor>require(module);
 			this.addClass(testClass);
@@ -64,9 +66,9 @@ export class TestRunner {
 		const testClass = <TestClassConstructor>ctor;
 		const newClass = <TestClassInstance>new ctor();
 
-		if (newClass.setUp !== undefined) {
-			newClass.setUp(newClass);
-		}
+		//if (newClass.setUp !== undefined) {
+		//	newClass.setUp(newClass);
+		//}
 
 		this.testClasses.push([testClass, newClass]);
 	}
@@ -83,17 +85,14 @@ export class TestRunner {
 				const beforeAllCallbacks = getAnnotation(testClass, Annotation.BeforeAll);
 				beforeAllCallbacks.forEach((callback) => callback());
 			})
-			.catch(() => {})
-			.finally(() => {
-				const runClass = this.runTestClass(testClass, testClassInstance);
+				.catch(() => {})
+				.finally(() => {
+					const runClass = this.runTestClass(testClass, testClassInstance);
 
-				runClass.forEach((promise) => {
-					promisesToResolve.push(promise);
+					runClass.forEach((promise) => {
+						promisesToResolve.push(promise);
+					});
 				});
-			})
-			
-
-			
 		}
 
 		await Promise.all(promisesToResolve).then(() => {
@@ -109,7 +108,10 @@ export class TestRunner {
 
 		const res = new Array<TestMethod>();
 		list.forEach((val) => {
-			res.push(val);
+			// make sure each TestMethod isATest
+			if (val.options?.isATest === true) {
+				res.push(val);
+			}
 		});
 
 		return res;
@@ -142,6 +144,13 @@ export class TestRunner {
 			});
 		};
 
+		const skip = (test: TestMethod, results: Omit<TestCaseResult, "errorMessage">): void => {
+			this.skippedTests++;
+			addResult(test, {
+				timeElapsed: results.timeElapsed,
+			});
+		};
+
 		const runTestCase = async (callback: Callback, test: TestMethod): Promise<void> => {
 			const start = os.clock();
 			try {
@@ -162,7 +171,11 @@ export class TestRunner {
 		const testPromises = testList.map(async (test) => {
 			const beforeEachCallbacks = getAnnotation(testClass, Annotation.BeforeEach);
 			beforeEachCallbacks.forEach((callback) => callback(testClassInstance));
-
+			// skip the test before it can be executed
+			if (test.options?.disabled?.value === true) {
+				skip(test, { timeElapsed: 0 });
+				return Promise.resolve();
+			}
 			const callback = <Callback>(testClass as unknown as TestClassType)[test.name];
 			const res = runTestCase(() => callback(testClassInstance), test);
 
@@ -181,9 +194,9 @@ export class TestRunner {
 	private generateOutput(elapsedTime: number): string {
 		const results = new StringBuilder("\n\n");
 
-		const getSymbol = (passed: boolean) => (passed ? "+" : "x");
+		const getSymbol = (passed: boolean, skipped?: boolean) => (skipped === true ? "-" : passed ? "+" : "x");
 
-		const totalTestsRan = this.failedTests + this.passedTests;
+		const totalTestsRan = this.failedTests + this.passedTests + this.skippedTests;
 
 		if (totalTestsRan === 0) {
 			results.appendLine("No tests ran.");
@@ -193,8 +206,8 @@ export class TestRunner {
 		this.results.forEach((testResultsRecord, testClass) => {
 			const testClassMetadata = getClassMetadata(testClass);
 
-			let className = testClassMetadata?.displayName ?? (testClass as unknown as string);
-			
+			const className = testClassMetadata?.displayName ?? (testClass as unknown as string);
+
 			const testResults: [TestMethod, TestCaseResult][] = [];
 			testResultsRecord.forEach((value, key) => {
 				testResults.push([key, value]);
@@ -210,15 +223,24 @@ export class TestRunner {
 			testResults.forEach((testResult, index) => {
 				const [testCaseMetadata, testCase] = testResult;
 
+				// get the testCase metadata properties
+				const testDisabledOptions = testCaseMetadata.options?.disabled;
+
 				const passed = testCase.errorMessage === undefined;
 				const timeElapsed = testCase.timeElapsed;
 				const isLast = index === testResults.size() - 1;
 
 				results.append(" │");
 
-				results.appendLine(
-					`\t${isLast ? "└" : "├"}── [${getSymbol(passed)}] ${testCaseMetadata.options.displayName ?? testCaseMetadata.name} (${math.round(timeElapsed * 1000)}ms) ${!passed ? "FAILED" : ""}`,
-				);
+				if (testDisabledOptions?.value === true) {
+					results.appendLine(
+						`\t${isLast ? "└" : "├"}── [${getSymbol(passed, testDisabledOptions.value)}] ${testCaseMetadata.options?.displayName ?? testCaseMetadata.name} (SKIPPED: ${testDisabledOptions.message})`,
+					);
+				} else {
+					results.appendLine(
+						`\t${isLast ? "└" : "├"}── [${getSymbol(passed)}] ${testCaseMetadata.options?.displayName ?? testCaseMetadata.name} (${math.round(timeElapsed * 1000)}ms) ${!passed ? "FAILED" : ""}`,
+					);
+				}
 			});
 
 			results.appendLine("");
@@ -229,7 +251,7 @@ export class TestRunner {
 
 			let failureIndex = 0;
 
-			for (const [className, testResults] of pairs(this.results)) 
+			for (const [className, testResults] of pairs(this.results))
 				for (const [testCaseName, { errorMessage }] of pairs(testResults)) {
 					if (errorMessage === undefined) continue;
 					results.appendLine(`${++failureIndex}. ${className}.${testCaseName}`);
@@ -248,6 +270,7 @@ export class TestRunner {
 		results.appendLine(`\tRan ${totalTests} tests in ${math.round(elapsedTime * 1000)}ms`);
 		results.appendLine(`\t\tPassed: ${this.passedTests}`);
 		results.appendLine(`\t\tFailed: ${this.failedTests}`);
+		results.appendLine(`\t\tSkipped: ${this.skippedTests}`);
 		results.appendLine("");
 
 		return results.toString();

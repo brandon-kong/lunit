@@ -23,6 +23,6 @@
 	],
 	"rules": {
 		"prettier/prettier": "warn",
-		"@typescript-eslint/no-require-imports": "warn"
+		"@typescript-eslint/no-require-imports": "off"
 	}
 }

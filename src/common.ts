@@ -1,6 +1,6 @@
 export type TestMethod = {
 	name: string;
-	options: TestMetadataOptions;
+	options?: TestMetadataOptions;
 };
 
 export enum Annotation {
@@ -22,6 +22,7 @@ export type AbstractConstructor<T = object> = abstract new (...args: never[]) =>
 export type Scope = "Client" | "Server" | "Both";
 
 export type TestMetadataOptions = {
+	isATest?: boolean;
 	displayName?: string;
 	scope?: Scope;
 	disabled?: {
