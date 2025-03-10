@@ -65,18 +65,17 @@ export class TestRunner {
 		for (const [testClass, testClassInstance] of this.testClasses) {
 			// run beforeAll here
 
-			await Promise.try(() => {
+            try {
 				const beforeAllCallbacks = getAnnotation(testClass, Annotation.BeforeAll);
 				beforeAllCallbacks.forEach((callback) => callback());
-			})
-                .catch(() => {})
-				.finally(() => {
+            }
+				finally{
 					const runClass = this.runTestClass(testClass, testClassInstance);
 
 					runClass.forEach((promise) => {
 						promisesToResolve.push(promise);
 					});
-				})
+				}
 		}
 
 		await Promise.all(promisesToResolve).then(() => {
@@ -159,12 +158,12 @@ export class TestRunner {
 
 		const testPromises = testList.map(async (test) => {
 
-           await Promise.try(() => {
-                const beforeEachCallbacks = getAnnotation(testClass, Annotation.BeforeEach);
-			    beforeEachCallbacks.forEach((callback) => callback(testClassInstance));
+       try {
+            const beforeEachCallbacks = getAnnotation(testClass, Annotation.BeforeEach);
+		    beforeEachCallbacks.forEach((callback) => callback(testClassInstance));
 
-            })
-            .catch(() => {});
+        }
+        catch {}
           
 
           // skip the test before it can be executed
