@@ -189,7 +189,6 @@ export class TestRunner {
 
 			if (test.options.scope !== undefined) {
 				const testScope = test.options.scope;
-
 				if (
 					(IS_CLIENT === false && testScope === Scope.Client) ||
 					(IS_CLIENT === true && testScope === Scope.Server)
@@ -229,16 +228,19 @@ export class TestRunner {
 		const formatTestResult = (testResult: [TestMethod, TestCaseResult], isLast: boolean) => {
 			const [testCaseMetadata, testCase] = testResult;
 
+			const passed = testCase.passed;
 			const skipped = testCase.skipped;
+			const failed = !(passed || skipped);
+
 			const isDisabled = testCaseMetadata.options.disabled?.value || false;
 			const disabledMessage = testCaseMetadata.options.disabled?.message ?? "";
 
-			const passed = testCase.errorMessage === undefined;
 			const timeElapsed = testCase.timeElapsed;
 
 			results.append(" │");
+
 			results.appendLine(
-				`\t${isLast ? "└" : "├"}── [${getSymbol(passed, skipped)}] ${testCaseMetadata.options.displayName ?? testCaseMetadata.name} (${math.round(timeElapsed * 1000)}ms) ${isDisabled ? `(SKIPPED${disabledMessage.size() > 0 ? ` ${disabledMessage}` : ""})` : `SKIPPED (not running on ${testCaseMetadata.options.scope ?? "valid scope"})`}`,
+				`\t${isLast ? "└" : "├"}── [${getSymbol(passed, skipped)}] ${testCaseMetadata.options.displayName ?? testCaseMetadata.name} (${math.round(timeElapsed * 1000)}ms) ${passed ? "PASSED" : failed ? "FALED" : isDisabled ? `SKIPPED${disabledMessage.size() > 0 ? ` (${disabledMessage})` : ""}` : `SKIPPED${testCaseMetadata.options.scope !== undefined ? ` (not running on ${testCaseMetadata.options.scope})` : ""}`}`,
 			);
 		};
 
