@@ -19,7 +19,10 @@ export const enum Metadata {
 export type Constructor<T = object> = new (...args: never[]) => T;
 export type AbstractConstructor<T = object> = abstract new (...args: never[]) => T;
 
-export type Scope = "Client" | "Server" | "Both";
+export enum Scope {
+	Server = "Server",
+	Client = "Client",
+}
 
 export type TestMetadataOptions = {
 	isATest?: boolean;
@@ -31,6 +34,11 @@ export type TestMetadataOptions = {
 	};
 	timeout?: number;
 	order?: number;
+};
+
+export type DecoratorOptions = {
+	annotation?: Annotation;
+	options?: TestMetadataOptions;
 };
 
 export const DEFAULT_ORDER: number = 999;

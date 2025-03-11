@@ -1,19 +1,4 @@
-import { Annotation, Metadata, TestMethod, TestMetadataOptions } from "./common";
-
-export function flatten<T extends defined>(arr: (T | T[])[]): T[] {
-	const result: T[] = [];
-	for (const item of arr) {
-		if (typeIs(item, "table")) {
-			const flattenedItem = flatten(item as T[]);
-			for (const subItem of flattenedItem) {
-				result.push(subItem);
-			}
-		} else {
-			result.push(item);
-		}
-	}
-	return result;
-}
+import { Annotation, Metadata, TestMethod, TestMetadataOptions } from "../common";
 
 export function hasMetadata<T extends object>(ctor: T, data: Metadata): boolean {
 	const ctorCast = <{ [key: string]: unknown }>ctor;
@@ -116,21 +101,4 @@ export function addClassMetadata<T extends object>(ctor: T, options: TestMetadat
 export function getClassMetadata<T extends object>(ctor: T): TestMetadataOptions | undefined {
 	const ctorCast = <{ [Metadata.ClassMetadata]?: TestMetadataOptions }>ctor;
 	return ctorCast[Metadata.ClassMetadata];
-}
-
-export function getDescendantsOfType<T extends keyof Instances, I extends Instances[T] = Instances[T]>(
-	root: Instance,
-	...classNames: T[]
-): I[] {
-	const res: I[] = [];
-
-	for (const className of classNames) {
-		for (const descendant of root.GetDescendants()) {
-			if (descendant.ClassName === className) {
-				res.push(descendant as I);
-			}
-		}
-	}
-
-	return res;
 }
