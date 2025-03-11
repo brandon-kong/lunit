@@ -4,3 +4,4 @@
 *.tsbuildinfo
 
 *.tgz
+*.rbxl.lock
