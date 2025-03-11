@@ -65,7 +65,7 @@ export const Timeout = (timeInMilliseconds: number) => createDecorator({ options
 export const Order = (order: number) => createDecorator({ options: { order } });
 
 /**
- * Specifies that a test case or test class should run on the server.
+ * Specifies that a test case should run on the server.
  * @example
  * ```typescript
  * @Server
@@ -77,7 +77,7 @@ export const Order = (order: number) => createDecorator({ options: { order } });
 export const Server = createDecorator({ options: { scope: Scope.Server } });
 
 /**
- * Specifies that a test case or test class should run on the client.
+ * Specifies that a test case should run on the client.
  * @example
  * ```typescript
  * @Client

@@ -70,16 +70,22 @@ export class TestRunner {
 		const promisesToResolve: Promise<void>[] = [];
 
 		for (const [testClass, testClassInstance] of this.testClasses) {
-			// run beforeAll here
-
+			// Run all beforeAll callbacks before running the tests
 			try {
 				const beforeAllCallbacks = getAnnotation(testClass, Annotation.BeforeAll);
 				beforeAllCallbacks.forEach((callback) => callback());
 			} finally {
 				const runClass = this.runTestClass(testClass, testClassInstance);
 
-				runClass.forEach((promise) => {
-					promisesToResolve.push(promise);
+				await Promise.all(runClass).then(() => {
+					runClass.forEach((promise) => {
+						promisesToResolve.push(promise);
+					});
+
+					Promise.try(() => {
+						const afterAllCallbacks = getAnnotation(testClass, Annotation.AfterAll);
+						afterAllCallbacks.forEach((callback) => callback());
+					});
 				});
 			}
 		}
@@ -97,7 +103,7 @@ export class TestRunner {
 
 		const res = new Array<TestMethod>();
 		list.forEach((val) => {
-			// make sure each TestMethod isATest
+			// Without this, any function with a decorator is marked as a test, even if @Test was not applied
 			if (val.options.isATest === true) {
 				res.push(val);
 			}
@@ -160,6 +166,22 @@ export class TestRunner {
 
 		const runTestCase = async (callback: Callback, test: TestMethod): Promise<void> => {
 			const start = os.clock();
+
+			if (test.options.timeout !== undefined) {
+				const timeOutSeconds = test.options.timeout / 1000;
+				const promise = Promise.try(callback)
+					.timeout(timeOutSeconds)
+					.then(() => {
+						const timeElapsed = os.clock() - start;
+						pass(test, { timeElapsed });
+					})
+					.catch(() => {
+						const timeElapsed = os.clock() - start;
+						fail(`Timeout of ${test.options.timeout}ms exceeded`, test, { timeElapsed });
+					});
+				return promise;
+			}
+
 			try {
 				await callback();
 			} catch (e) {
@@ -181,12 +203,13 @@ export class TestRunner {
 				beforeEachCallbacks.forEach((callback) => callback(testClassInstance));
 			});
 
-			// skip the test before it can be executed
+			// Skip the test before it can be executed
 			if (test.options.disabled?.value === true) {
 				skip(test, { timeElapsed: 0 });
 				return Promise.resolve();
 			}
 
+			// If the function should run on either the client or server, skip it if it's ran on another boundary
 			if (test.options.scope !== undefined) {
 				const testScope = test.options.scope;
 				if (
@@ -240,7 +263,7 @@ export class TestRunner {
 			results.append(" │");
 
 			results.appendLine(
-				`\t${isLast ? "└" : "├"}── [${getSymbol(passed, skipped)}] ${testCaseMetadata.options.displayName ?? testCaseMetadata.name} (${math.round(timeElapsed * 1000)}ms) ${passed ? "PASSED" : failed ? "FALED" : isDisabled ? `SKIPPED${disabledMessage.size() > 0 ? ` (${disabledMessage})` : ""}` : `SKIPPED${testCaseMetadata.options.scope !== undefined ? ` (not running on ${testCaseMetadata.options.scope})` : ""}`}`,
+				`\t${isLast ? "└" : "├"}── [${getSymbol(passed, skipped)}] ${testCaseMetadata.options.displayName ?? testCaseMetadata.name} (${math.round(timeElapsed * 1000)}ms) ${passed ? "PASSED" : failed ? "FAILED" : isDisabled ? `SKIPPED${disabledMessage.size() > 0 ? ` (${disabledMessage})` : ""}` : `SKIPPED${testCaseMetadata.options.scope !== undefined ? ` (not running on ${testCaseMetadata.options.scope})` : ""}`}`,
 			);
 		};
 
@@ -275,7 +298,7 @@ export class TestRunner {
 			for (const [className, testResults] of pairs(this.results)) {
 				for (const [testCaseName, { errorMessage }] of pairs(testResults)) {
 					if (errorMessage === undefined) continue;
-					results.appendLine(`${++failureIndex}. ${className}.${testCaseName}`);
+					results.appendLine(`${++failureIndex}. ${className}.${testCaseName.name}`);
 
 					const errorDisplay = tostring(errorMessage)
 						.split("\n")
