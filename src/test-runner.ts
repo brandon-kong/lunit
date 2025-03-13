@@ -13,13 +13,11 @@ const IS_CLIENT = RUN_SERVICE.IsClient();
 
 type TestClassType = {
 	[Metadata.TestList]: Map<string, TestMethod>;
-	setUp?: Callback;
-	beforeAll?: Callback;
-	beforeEach?: Callback;
-	afterAll?: Callback;
-	afterEach?: Callback;
-
 	[key: string]: unknown;
+};
+
+type TestRunOptions = {
+	filterTags?: string[];
 };
 
 interface TestCaseResult {
@@ -64,7 +62,7 @@ export class TestRunner {
 		this.testClasses.push([testClass, newClass]);
 	}
 
-	public async run(): Promise<void> {
+	public async run(options?: TestRunOptions): Promise<void> {
 		const start = os.clock();
 
 		const promisesToResolve: Promise<void>[] = [];
@@ -75,7 +73,7 @@ export class TestRunner {
 				const beforeAllCallbacks = getAnnotation(testClass, Annotation.BeforeAll);
 				beforeAllCallbacks.forEach((callback) => callback());
 			} finally {
-				const runClass = this.runTestClass(testClass, testClassInstance);
+				const runClass = this.runTestClass(testClass, testClassInstance, options);
 
 				await Promise.all(runClass).then(() => {
 					runClass.forEach((promise) => {
@@ -92,11 +90,11 @@ export class TestRunner {
 
 		await Promise.all(promisesToResolve).then(() => {
 			const elapsedTime = os.clock() - start;
-			print(this.generateOutput(elapsedTime));
+			print(this.generateOutput(elapsedTime, options));
 		});
 	}
 
-	private getTestsFromTestClass(testClass: TestClassConstructor): ReadonlyArray<TestMethod> {
+	private getTestsFromTestClass(testClass: TestClassConstructor, filterTags?: string[]): ReadonlyArray<TestMethod> {
 		if (hasMetadata(testClass, Metadata.TestList) === false) return [];
 
 		const list: Map<string, TestMethod> = (testClass as unknown as TestClassType)[Metadata.TestList];
@@ -105,7 +103,21 @@ export class TestRunner {
 		list.forEach((val) => {
 			// Without this, any function with a decorator is marked as a test, even if @Test was not applied
 			if (val.options.isATest === true) {
-				res.push(val);
+				if (filterTags !== undefined && val.options.tags !== undefined) {
+					let shouldAdd = false;
+
+					for (const tag of val.options.tags) {
+						if (filterTags.includes(tag)) {
+							shouldAdd = true;
+						}
+					}
+
+					if (shouldAdd === true) {
+						res.push(val);
+					}
+				} else {
+					res.push(val);
+				}
 			}
 		});
 
@@ -120,7 +132,11 @@ export class TestRunner {
 		return res;
 	}
 
-	private runTestClass(testClass: TestClassConstructor, testClassInstance: TestClassInstance): Promise<void>[] {
+	private runTestClass(
+		testClass: TestClassConstructor,
+		testClassInstance: TestClassInstance,
+		options?: TestRunOptions,
+	): Promise<void>[] {
 		const addResult = (test: TestMethod, result: TestCaseResult) => {
 			let classResults = this.results.get(testClass);
 			if (classResults === undefined) {
@@ -195,7 +211,7 @@ export class TestRunner {
 			return Promise.resolve();
 		};
 
-		const testList = this.getTestsFromTestClass(testClass);
+		const testList = this.getTestsFromTestClass(testClass, options?.filterTags);
 
 		const testPromises = testList.map(async (test) => {
 			await Promise.try(() => {
@@ -236,7 +252,7 @@ export class TestRunner {
 		return testPromises;
 	}
 
-	private generateOutput(elapsedTime: number): string {
+	private generateOutput(elapsedTime: number, options?: TestRunOptions): string {
 		const results = new StringBuilder("\n\n");
 
 		const getSymbol = (passed: boolean, skipped?: boolean) => (skipped === true ? "-" : passed ? "+" : "x");
@@ -246,6 +262,11 @@ export class TestRunner {
 		if (totalTestsRan === 0) {
 			results.appendLine("No tests ran.");
 			return results.toString();
+		}
+
+		if (options?.filterTags !== undefined) {
+			results.appendLine(`Ran filtered tests on the following tags: ${options.filterTags}`);
+			results.appendLine("");
 		}
 
 		const formatTestResult = (testResult: [TestMethod, TestCaseResult], isLast: boolean) => {

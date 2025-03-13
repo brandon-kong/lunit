@@ -25,6 +25,7 @@ export enum Scope {
 }
 
 export type TestMetadataOptions = {
+	tags?: string[];
 	isATest?: boolean;
 	displayName?: string;
 	scope?: Scope;
