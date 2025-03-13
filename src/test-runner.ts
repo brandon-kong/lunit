@@ -103,17 +103,19 @@ export class TestRunner {
 		list.forEach((val) => {
 			// Without this, any function with a decorator is marked as a test, even if @Test was not applied
 			if (val.options.isATest === true) {
-				if (filterTags !== undefined && val.options.tags !== undefined) {
-					let shouldAdd = false;
+				if (filterTags !== undefined) {
+					if (val.options.tags !== undefined) {
+						let shouldAdd = false;
 
-					for (const tag of val.options.tags) {
-						if (filterTags.includes(tag)) {
-							shouldAdd = true;
+						for (const tag of val.options.tags) {
+							if (filterTags.includes(tag)) {
+								shouldAdd = true;
+							}
 						}
-					}
 
-					if (shouldAdd === true) {
-						res.push(val);
+						if (shouldAdd === true) {
+							res.push(val);
+						}
 					}
 				} else {
 					res.push(val);
@@ -259,14 +261,14 @@ export class TestRunner {
 
 		const totalTestsRan = this.failedTests + this.passedTests + this.skippedTests;
 
-		if (totalTestsRan === 0) {
-			results.appendLine("No tests ran.");
-			return results.toString();
-		}
-
 		if (options?.filterTags !== undefined) {
 			results.appendLine(`Ran filtered tests on the following tags: ${arrayToString(options.filterTags)}`);
 			results.appendLine("");
+		}
+
+		if (totalTestsRan === 0) {
+			results.appendLine("No tests ran.");
+			return results.toString();
 		}
 
 		const formatTestResult = (testResult: [TestMethod, TestCaseResult], isLast: boolean) => {
