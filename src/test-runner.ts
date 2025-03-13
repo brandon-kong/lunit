@@ -1,7 +1,7 @@
 import { Annotation, Constructor, Metadata, TestMethod, DEFAULT_ORDER, Scope } from "./common";
 
 import StringBuilder from "./utils/string-builder";
-import { flatten } from "./utils/array-utils";
+import { arrayToString, flatten } from "./utils/array-utils";
 import { getDescendantsOfType } from "./utils/instance-utils";
 import { getAnnotation, getClassMetadata, hasMetadata } from "./utils/metadata";
 
@@ -265,7 +265,7 @@ export class TestRunner {
 		}
 
 		if (options?.filterTags !== undefined) {
-			results.appendLine(`Ran filtered tests on the following tags: ${options.filterTags}`);
+			results.appendLine(`Ran filtered tests on the following tags: ${arrayToString(options.filterTags)}`);
 			results.appendLine("");
 		}
 

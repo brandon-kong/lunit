@@ -12,3 +12,7 @@ export function flatten<T extends defined>(arr: (T | T[])[]): T[] {
 	}
 	return result;
 }
+
+export function arrayToString<T extends defined>(arr: T[]): string {
+	return arr.join(", ");
+}
