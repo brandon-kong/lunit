@@ -13,5 +13,6 @@ export {
 	Before,
 	BeforeAll,
 	BeforeEach,
+	Tag,
 } from "./decorators";
 export { Assert } from "./assert";

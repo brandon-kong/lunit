@@ -501,4 +501,30 @@ export abstract class Assert {
 			);
 		}
 	}
+
+	// String Assertions
+	public static startsWith(currString: string, pattern: string): void;
+	public static startsWith(currString: string, pattern: string, message?: string): void;
+	public static startsWith(currString: string, pattern: string, message?: () => string): void;
+	public static startsWith(currString: string, pattern: string, message?: MessageType): void {
+		if (currString.sub(0, pattern.size() - 1) !== pattern) {
+			this.throwAssertionFailedException(
+				`Expected string "${currString}" to start with pattern "${pattern}"`,
+				message,
+			);
+		}
+	}
+
+	// String Assertions
+	public static endsWith(currString: string, pattern: string): void;
+	public static endsWith(currString: string, pattern: string, message?: string): void;
+	public static endsWith(currString: string, pattern: string, message?: () => string): void;
+	public static endsWith(currString: string, pattern: string, message?: MessageType): void {
+		if (currString.sub(currString.size() - pattern.size() - 1, currString.size()) !== pattern) {
+			this.throwAssertionFailedException(
+				`Expected string "${currString}" to start with pattern "${pattern}"`,
+				message,
+			);
+		}
+	}
 }

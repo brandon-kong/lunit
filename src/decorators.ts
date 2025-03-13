@@ -160,6 +160,29 @@ export const AfterEach = createAnnotation(Annotation.AfterEach);
  */
 export const AfterAll = createAnnotation(Annotation.AfterAll);
 
+/**
+ * Assigns one or more tags to a test case or test class for filtering and categorization.
+ *
+ * Tags allow selective execution of test cases, making it easier to run specific groups of tests
+ * (e.g., regression, smoke, or critical tests).
+ *
+ * @param tags - One or more string tags associated with the test.
+ *
+ * @example
+ * ```typescript
+ * @Tag("Regression")
+ * public myTest() {
+ *   // This test belongs to the "Regression" category
+ * }
+ *
+ * @Tag("Smoke", "Critical")
+ * public anotherTest() {
+ *   // This test belongs to both "Smoke" and "Critical" categories
+ * }
+ * ```
+ */
+export const Tag = (...args: string[]) => createDecorator({ options: { tags: args } });
+
 export default {
 	Test,
 	Disabled,
