@@ -1,4 +1,4 @@
-import { Annotation, Constructor, Metadata, TestMethod, DEFAULT_ORDER, Scope } from "./common";
+import { Annotation, Constructor, Metadata, TestMethod, DEFAULT_ORDER, Environment } from "./common";
 
 import StringBuilder from "./utils/string-builder";
 import { arrayToString, flatten } from "./utils/array-utils";
@@ -228,11 +228,11 @@ export class TestRunner {
 			}
 
 			// If the function should run on either the client or server, skip it if it's ran on another boundary
-			if (test.options.scope !== undefined) {
-				const testScope = test.options.scope;
+			if (test.options.environment !== undefined) {
+				const testScope = test.options.environment;
 				if (
-					(IS_CLIENT === false && testScope === Scope.Client) ||
-					(IS_CLIENT === true && testScope === Scope.Server)
+					(IS_CLIENT === false && testScope === Environment.Client) ||
+					(IS_CLIENT === true && testScope === Environment.Server)
 				) {
 					skip(test, { timeElapsed: 0 });
 					return Promise.resolve();
@@ -286,7 +286,7 @@ export class TestRunner {
 			results.append(" │");
 
 			results.appendLine(
-				`\t${isLast ? "└" : "├"}── [${getSymbol(passed, skipped)}] ${testCaseMetadata.options.displayName ?? testCaseMetadata.name} (${math.round(timeElapsed * 1000)}ms) ${passed ? "PASSED" : failed ? "FAILED" : isDisabled ? `SKIPPED${disabledMessage.size() > 0 ? ` (${disabledMessage})` : ""}` : `SKIPPED${testCaseMetadata.options.scope !== undefined ? ` (not running on ${testCaseMetadata.options.scope})` : ""}`}`,
+				`\t${isLast ? "└" : "├"}── [${getSymbol(passed, skipped)}] ${testCaseMetadata.options.displayName ?? testCaseMetadata.name} (${math.round(timeElapsed * 1000)}ms) ${passed ? "PASSED" : failed ? "FAILED" : isDisabled ? `SKIPPED${disabledMessage.size() > 0 ? ` (${disabledMessage})` : ""}` : `SKIPPED${testCaseMetadata.options.environment !== undefined ? ` (not running on ${testCaseMetadata.options.environment})` : ""}`}`,
 			);
 		};
 

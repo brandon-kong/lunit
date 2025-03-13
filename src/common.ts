@@ -19,7 +19,7 @@ export const enum Metadata {
 export type Constructor<T = object> = new (...args: never[]) => T;
 export type AbstractConstructor<T = object> = abstract new (...args: never[]) => T;
 
-export enum Scope {
+export enum Environment {
 	Server = "Server",
 	Client = "Client",
 }
@@ -28,7 +28,7 @@ export type TestMetadataOptions = {
 	tags?: string[];
 	isATest?: boolean;
 	displayName?: string;
-	scope?: Scope;
+	environment?: Environment;
 	disabled?: {
 		value: true;
 		message?: string;
