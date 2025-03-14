@@ -41,7 +41,6 @@ function sum(a: number, b: number): number {
 }
 
 class TestClass {
-
     @Test
     sumTwoNums() {
         Assert.equals(sum(5, 5), 10)
@@ -62,7 +61,7 @@ import { ReplicatedStorage } from "@rbxts/services";
 import { TestRunner } from "@rbxts/lunit";
 
 const testRunner = new TestRunner([
-    ReplicatedStorage.FindFirstChild("Tests")
+    ReplicatedStorage.FindFirstChild("Tests") // the folder containing all your test modules
 ])
 
 testRunner.run();
