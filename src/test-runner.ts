@@ -9,7 +9,7 @@ import {
 	TestCaseResult,
 	TestClassConstructor,
 } from "./common";
-import { arrayToString, flatten } from "./utils/array-utils";
+import { arrayToString, flatten, sharesOneElement } from "./utils/array-utils";
 import { getDescendantsOfType } from "./utils/instance-utils";
 import StringBuilder from "./utils/string-builder";
 import { getAnnotation, getClassMetadata, hasMetadata } from "./utils/metadata";
@@ -110,6 +110,9 @@ export class TestRunner {
 
 	private getTestsFromTestClass(testClass: TestClassConstructor): ReadonlyArray<TestMethod> {
 		if (hasMetadata(testClass, Metadata.TestList) === false) return [];
+		const classMetadata = getClassMetadata(testClass);
+
+		const classTags = classMetadata?.tags ?? [];
 
 		const list: Map<string, TestMethod> = (testClass as unknown as TestClassType)[Metadata.TestList];
 
@@ -118,11 +121,16 @@ export class TestRunner {
 			// Without this, any function with a decorator is marked as a test, even if @Test was not applied
 			if (val.options.isATest === true) {
 				if (this.options.filterTags !== undefined) {
-					if (val.options.tags !== undefined) {
+					if (val.options.tags !== undefined || classTags.size() > 0) {
 						let shouldAdd = false;
 
-						for (const tag of val.options.tags) {
-							if (this.options.filterTags.includes(tag)) {
+						if (sharesOneElement(this.options.filterTags, classTags)) {
+							shouldAdd = true;
+						}
+
+						// add the test if the METHOD is marked as tag
+						if (shouldAdd === false) {
+							if (sharesOneElement(this.options.filterTags, val.options.tags ?? [])) {
 								shouldAdd = true;
 							}
 						}

@@ -37,15 +37,15 @@ import { Test, DisplayName, Assert } from "@rbxts/lunit";
 
 // this is the function we're testing
 function sum(a: number, b: number): number {
-    return a + b;
+	return a + b;
 }
 
 class TestClass {
-    @Test
-    sumTwoNums() {
-        Assert.equals(sum(5, 5), 10)
-        Assert.notEqual(sum(5, 5), 999)
-    }
+	@Test
+	sumTwoNums() {
+		Assert.equals(sum(5, 5), 10);
+		Assert.notEqual(sum(5, 5), 999);
+	}
 }
 
 export = TestClass; // export the class as a module
@@ -61,8 +61,8 @@ import { ReplicatedStorage } from "@rbxts/services";
 import { TestRunner } from "@rbxts/lunit";
 
 const testRunner = new TestRunner([
-    ReplicatedStorage.FindFirstChild("Tests") // the folder containing all your test modules
-])
+	ReplicatedStorage.FindFirstChild("Tests"), // the folder containing all your test modules
+]);
 
 testRunner.run();
 ```

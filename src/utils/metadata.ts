@@ -95,7 +95,12 @@ export function addClassMetadata<T extends object>(ctor: T, options: TestMetadat
 		ctorCast[Metadata.ClassMetadata] = {};
 	}
 
-	ctorCast[Metadata.ClassMetadata] = options;
+	const ctorAsMap = ctorCast[Metadata.ClassMetadata] as Map<string, unknown>;
+	const optionsAsMap = options as Map<string, unknown>;
+
+	optionsAsMap.forEach((val, key) => {
+		ctorAsMap.set(key, val);
+	});
 }
 
 export function getClassMetadata<T extends object>(ctor: T): TestMetadataOptions | undefined {

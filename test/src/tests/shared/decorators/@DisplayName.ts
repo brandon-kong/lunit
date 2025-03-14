@@ -1,6 +1,6 @@
 import { DisplayName, NegativeTest, Tag, Test } from "@rbxts/lunit";
 
-@DisplayName("@Test Decorator")
+@DisplayName("@DisplayName Decorator")
 @Tag("Decorator")
 class TestDecoratorUnitTests {
 	@Test
