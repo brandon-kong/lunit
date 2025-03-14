@@ -1,7 +1,7 @@
 import { Assert, BeforeAll, BeforeEach, DisplayName, Order, Tag, Test } from "@rbxts/lunit";
 
 @DisplayName("Annotation Tests")
-@Tag("Annotation", "Decorator")
+@Tag("Annotation")
 class TestDecoratorUnitTests {
 	private something = false;
 

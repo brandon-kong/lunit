@@ -10,6 +10,10 @@ class TestDecoratorUnitTests {
 	@Test
 	shouldNotDisplayCustomName() {}
 
+    @Test
+    @DisplayName("")
+	shouldBeEmptyName() {}
+
 	@BeforeAll
 	beforeAll() {
 		error();
