@@ -16,3 +16,21 @@ export function flatten<T extends defined>(arr: (T | T[])[]): T[] {
 export function arrayToString<T extends defined>(arr: T[]): string {
 	return arr.join(", ");
 }
+
+export function getKeysFromMap<K extends defined>(map: Map<K, unknown>): K[] {
+	const res: K[] = [];
+
+	map.forEach((_, key) => {
+		res.push(key);
+	});
+	return res;
+}
+
+export function getValuesFromMap<V extends defined>(map: Map<unknown, V>): V[] {
+	const res: V[] = [];
+
+	map.forEach((val, _) => {
+		res.push(val);
+	});
+	return res;
+}

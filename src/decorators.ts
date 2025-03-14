@@ -1,4 +1,4 @@
-import { Annotation, Scope, DEFAULT_ORDER } from "./common";
+import { Annotation, DEFAULT_ORDER, Environment } from "./common";
 import { createDecorator, createAnnotation } from "./utils/decorator-utils";
 /**
  * Marks a method as a test case.
@@ -74,7 +74,7 @@ export const Order = (order: number) => createDecorator({ options: { order } });
  * }
  * ```
  */
-export const Server = createDecorator({ options: { scope: Scope.Server } });
+export const Server = createDecorator({ options: { environment: Environment.Server } });
 
 /**
  * Specifies that a test case should run on the client.
@@ -86,7 +86,7 @@ export const Server = createDecorator({ options: { scope: Scope.Server } });
  * }
  * ```
  */
-export const Client = createDecorator({ options: { scope: Scope.Client } });
+export const Client = createDecorator({ options: { environment: Environment.Client } });
 
 /**
  * Marks a method to be run before each test case.
@@ -183,6 +183,27 @@ export const AfterAll = createAnnotation(Annotation.AfterAll);
  */
 export const Tag = (...args: string[]) => createDecorator({ options: { tags: args } });
 
+/**
+ * Marks a test case as a negative test, meaning it is expected to fail under certain conditions.
+ *
+ * This decorator is useful for validating error handling, boundary conditions, and ensuring that
+ * invalid inputs or exceptional cases produce the correct failure behavior.
+ *
+ * If the test does *not* fail, it will be reported as an unexpected success.
+ *
+ * @example
+ * ```typescript
+ * @NegativeTest
+ * public shouldFailWhenDividingByZero() {
+ *   const result = 1 / 0;
+ *   Assert.false(isFinite(result), "Expected division by zero to result in an invalid number");
+ * }
+ * ```
+ */
+export const NegativeTest = createDecorator({
+	options: { isNegativeTest: true },
+});
+
 export default {
 	Test,
 	Disabled,
@@ -197,4 +218,7 @@ export default {
 	After,
 	AfterEach,
 	AfterAll,
+
+	Tag,
+	NegativeTest,
 };

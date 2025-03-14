@@ -19,16 +19,17 @@ export const enum Metadata {
 export type Constructor<T = object> = new (...args: never[]) => T;
 export type AbstractConstructor<T = object> = abstract new (...args: never[]) => T;
 
-export enum Scope {
+export enum Environment {
 	Server = "Server",
 	Client = "Client",
 }
 
 export type TestMetadataOptions = {
+	isNegativeTest?: boolean;
 	tags?: string[];
 	isATest?: boolean;
 	displayName?: string;
-	scope?: Scope;
+	environment?: Environment;
 	disabled?: {
 		value: true;
 		message?: string;
@@ -41,5 +42,39 @@ export type DecoratorOptions = {
 	annotation?: Annotation;
 	options?: TestMetadataOptions;
 };
+
+export interface TestCaseResult {
+	readonly passed: boolean;
+	readonly errorMessage?: string;
+	readonly timeElapsed: number;
+	readonly skipped: boolean;
+	readonly className: string;
+	readonly classInstance: object;
+}
+
+export type TestRunOptions = {
+	filterTags?: string[];
+	reporter?: Reporter;
+};
+
+export interface Reporter {
+	onSuiteStart?(suiteName: string, totalTests: number): void;
+	onSuiteEnd?(suiteName: string, elapsedTime: number): void;
+
+	onRunStart(totalTests: number): void;
+	onRunEnd(elapsedTime: number): void;
+
+	onTestStart(testName: string): void;
+	onTestEnd(testName: string, result: TestCaseResult): void;
+
+	onTestPassed(testName: string): void;
+	onTestSkipped(testName: string, reason: string): void;
+	onTestFailed(testName: string, error: string): void;
+
+	getReport(): string;
+}
+
+export type TestClassInstance = Record<string, Callback>;
+export type TestClassConstructor = Constructor<TestClassInstance>;
 
 export const DEFAULT_ORDER: number = 999;
