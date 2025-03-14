@@ -21,11 +21,6 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"exports": {
-		"./decorators": "./out/decorators.luau",
-		"./assert": "./out/assert.luau",
-		"./test-runner": "./out/test-runner.luau"
-	},
 	"devDependencies": {
 		"@rbxts/compiler-types": "^3.0.0-types.0",
 		"@rbxts/types": "^1.0.840",

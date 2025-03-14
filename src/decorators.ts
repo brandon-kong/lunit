@@ -183,6 +183,27 @@ export const AfterAll = createAnnotation(Annotation.AfterAll);
  */
 export const Tag = (...args: string[]) => createDecorator({ options: { tags: args } });
 
+/**
+ * Marks a test case as a negative test, meaning it is expected to fail under certain conditions.
+ *
+ * This decorator is useful for validating error handling, boundary conditions, and ensuring that
+ * invalid inputs or exceptional cases produce the correct failure behavior.
+ *
+ * If the test does *not* fail, it will be reported as an unexpected success.
+ *
+ * @example
+ * ```typescript
+ * @NegativeTest
+ * public shouldFailWhenDividingByZero() {
+ *   const result = 1 / 0;
+ *   Assert.false(isFinite(result), "Expected division by zero to result in an invalid number");
+ * }
+ * ```
+ */
+export const NegativeTest = createDecorator({
+	options: { isNegativeTest: true },
+});
+
 export default {
 	Test,
 	Disabled,
@@ -197,4 +218,7 @@ export default {
 	After,
 	AfterEach,
 	AfterAll,
+
+	Tag,
+	NegativeTest,
 };

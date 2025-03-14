@@ -204,12 +204,26 @@ export class TestRunner {
 				await callback();
 			} catch (e) {
 				const timeElapsed = os.clock() - start;
-				fail(e, test, { timeElapsed });
+
+				if (test.options.isNegativeTest === true) {
+					// pass the test if it is negative
+					pass(test, { timeElapsed });
+				} else {
+					fail(e, test, { timeElapsed });
+				}
+
 				return Promise.resolve();
 			}
 
 			const timeElapsed = os.clock() - start;
-			pass(test, { timeElapsed });
+
+			if (test.options.isNegativeTest === true) {
+				// fail the test if it is negative
+				fail(`Test was marked as a negative test and unexpectedly did not error`, test, { timeElapsed });
+			} else {
+				pass(test, { timeElapsed });
+			}
+
 			return Promise.resolve();
 		};
 

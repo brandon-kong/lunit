@@ -14,5 +14,8 @@ export {
 	BeforeAll,
 	BeforeEach,
 	Tag,
+	NegativeTest,
 } from "./decorators";
+export * as Decorators from "./decorators";
+
 export { Assert } from "./assert";

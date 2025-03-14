@@ -25,6 +25,7 @@ export enum Environment {
 }
 
 export type TestMetadataOptions = {
+	isNegativeTest?: boolean;
 	tags?: string[];
 	isATest?: boolean;
 	displayName?: string;
