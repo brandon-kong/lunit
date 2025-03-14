@@ -1,17 +1,13 @@
 import { TestRunner } from "@rbxts/lunit";
 import { ReplicatedStorage } from "@rbxts/services";
-import { StringReporter } from "shared/reporter";
 
-const reporter = new StringReporter();
-
-const testRunner = new TestRunner([ReplicatedStorage.Tests.server, ReplicatedStorage.Tests.shared], {
-	reporter,
+const annotationTestRunner = new TestRunner([ReplicatedStorage.Tests.server, ReplicatedStorage.Tests.shared], {
+	filterTags: ["Annotation"],
 });
 
-testRunner.run().then((results) => {
-	print(results.size(), "test suites finished");
+const decoratorTestRunner = new TestRunner([ReplicatedStorage.Tests.server, ReplicatedStorage.Tests.shared], {
+	filterTags: ["Decorator"],
 });
 
-testRunner.run().then((results) => {
-	print(results.size(), "test suites finished");
-});
+annotationTestRunner.run()
+decoratorTestRunner.run()

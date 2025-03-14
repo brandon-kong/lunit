@@ -1,6 +1,7 @@
-import { DisplayName, NegativeTest, Test } from "@rbxts/lunit";
+import { DisplayName, NegativeTest, Tag, Test } from "@rbxts/lunit";
 
 @DisplayName("@Test Decorator")
+@Tag("Decorator")
 class TestDecoratorUnitTests {
 	@Test
 	@DisplayName("should pass in an empty method")

@@ -9,7 +9,7 @@ import {
 	TestCaseResult,
 	TestClassConstructor,
 } from "./common";
-import { arrayToString, flatten } from "./utils/array-utils";
+import { arrayToString, flatten, sharesOneElement } from "./utils/array-utils";
 import { getDescendantsOfType } from "./utils/instance-utils";
 import StringBuilder from "./utils/string-builder";
 import { getAnnotation, getClassMetadata, hasMetadata } from "./utils/metadata";
@@ -78,24 +78,18 @@ export class TestRunner {
 		this.options.reporter?.onRunStart(this.testClasses.size());
 
 		for (const [testClass, testClassInstance] of this.testClasses) {
-			// Run all beforeAll callbacks before running the tests
-			try {
-				const beforeAllCallbacks = getAnnotation(testClass, Annotation.BeforeAll);
-				beforeAllCallbacks.forEach((callback) => callback());
-			} finally {
-				const runClass = this.runTestClass(testClass, testClassInstance);
+			const runClass = await this.runTestClass(testClass, testClassInstance);
 
-				await Promise.all(runClass).then(() => {
-					runClass.forEach((promise) => {
-						promisesToResolve.push(promise);
-					});
-
-					Promise.try(() => {
-						const afterAllCallbacks = getAnnotation(testClass, Annotation.AfterAll);
-						afterAllCallbacks.forEach((callback) => callback());
-					});
+			await Promise.all(runClass).then(() => {
+				runClass.forEach((promise) => {
+					promisesToResolve.push(promise);
 				});
-			}
+
+				Promise.try(() => {
+					const afterAllCallbacks = getAnnotation(testClass, Annotation.AfterAll);
+					afterAllCallbacks.forEach((callback) => callback());
+				});
+			});
 		}
 
 		await Promise.all(promisesToResolve).then(() => {
@@ -110,6 +104,9 @@ export class TestRunner {
 
 	private getTestsFromTestClass(testClass: TestClassConstructor): ReadonlyArray<TestMethod> {
 		if (hasMetadata(testClass, Metadata.TestList) === false) return [];
+		const classMetadata = getClassMetadata(testClass);
+
+		const classTags = classMetadata?.tags ?? [];
 
 		const list: Map<string, TestMethod> = (testClass as unknown as TestClassType)[Metadata.TestList];
 
@@ -118,11 +115,16 @@ export class TestRunner {
 			// Without this, any function with a decorator is marked as a test, even if @Test was not applied
 			if (val.options.isATest === true) {
 				if (this.options.filterTags !== undefined) {
-					if (val.options.tags !== undefined) {
+					if (val.options.tags !== undefined || classTags.size() > 0) {
 						let shouldAdd = false;
 
-						for (const tag of val.options.tags) {
-							if (this.options.filterTags.includes(tag)) {
+						if (sharesOneElement(this.options.filterTags, classTags)) {
+							shouldAdd = true;
+						}
+
+						// add the test if the METHOD is marked as tag
+						if (shouldAdd === false) {
+							if (sharesOneElement(this.options.filterTags, val.options.tags ?? [])) {
 								shouldAdd = true;
 							}
 						}
@@ -139,16 +141,16 @@ export class TestRunner {
 
 		// Order the tests by the order where the default order is 999
 		res.sort((a, b) => {
-			return (
-				(a.options.order !== undefined ? a.options.order : DEFAULT_ORDER) <=
-				(b.options.order !== undefined ? b.options.order : DEFAULT_ORDER)
-			);
+			return (a.options.order ?? DEFAULT_ORDER) <= (b.options.order ?? DEFAULT_ORDER);
 		});
 
 		return res;
 	}
 
-	private runTestClass(testClass: TestClassConstructor, testClassInstance: TestClassInstance): Promise<void>[] {
+	private async runTestClass(
+		testClass: TestClassConstructor,
+		testClassInstance: TestClassInstance,
+	): Promise<Promise<void>[]> {
 		const testClassMetadata = getClassMetadata(testClass);
 
 		const addResult = (test: TestMethod, result: TestCaseResult) => {
@@ -231,19 +233,17 @@ export class TestRunner {
 
 			if (test.options.timeout !== undefined) {
 				const timeOutSeconds = test.options.timeout / 1000;
-				const promise = Promise.try(callback)
-					.timeout(timeOutSeconds)
-					.then(() => {
-						const timeElapsed = os.clock() - start;
-						pass(test, { timeElapsed });
-					})
-					.catch(() => {
-						const timeElapsed = os.clock() - start;
-						fail(`Timeout of ${test.options.timeout}ms exceeded`, test, {
-							timeElapsed,
-						});
+				try {
+					await Promise.try(callback).timeout(timeOutSeconds);
+					const timeElapsed = os.clock() - start;
+					pass(test, { timeElapsed });
+				} catch (e) {
+					const timeElapsed = os.clock() - start;
+					fail(`Timeout of ${test.options.timeout}ms exceeded`, test, {
+						timeElapsed,
 					});
-				return promise;
+				}
+				return;
 			}
 
 			try {
@@ -257,8 +257,7 @@ export class TestRunner {
 				} else {
 					fail(e, test, { timeElapsed });
 				}
-
-				return Promise.resolve();
+				return;
 			}
 
 			const timeElapsed = os.clock() - start;
@@ -269,22 +268,29 @@ export class TestRunner {
 			} else {
 				pass(test, { timeElapsed });
 			}
-
-			return Promise.resolve();
 		};
 
 		const testList = this.getTestsFromTestClass(testClass);
 
-		const testPromises = testList.map(async (test) => {
-			await Promise.try(() => {
-				const beforeEachCallbacks = getAnnotation(testClass, Annotation.BeforeEach);
-				beforeEachCallbacks.forEach((callback) => callback(testClassInstance));
-			});
+		await Promise.try(async () => {
+			const beforeAllCallbacks = getAnnotation(testClass, Annotation.BeforeAll);
+			for (const callback of beforeAllCallbacks) {
+				await Promise.try(() => callback(testClassInstance)).catch(() => {});
+			}
+		}).catch(() => {});
 
-			// Skip the test before it can be executed
+		const testPromises: Promise<void>[] = [];
+		for (const test of testList) {
+			await Promise.try(async () => {
+				const beforeEachCallbacks = getAnnotation(testClass, Annotation.BeforeEach);
+				for (const callback of beforeEachCallbacks) {
+					await Promise.try(() => callback(testClassInstance)).catch(() => {});
+				}
+			}).catch(() => {});
+
 			if (test.options.disabled?.value === true) {
 				skip(test, { timeElapsed: 0 });
-				return Promise.resolve();
+				continue;
 			}
 
 			// If the function should run on either the client or server, skip it if it's ran on another boundary
@@ -292,21 +298,27 @@ export class TestRunner {
 				const testEnvironment = test.options.environment;
 				if (!this.testIsOnRightEnvironment(testEnvironment)) {
 					skip(test, { timeElapsed: 0 });
-					return Promise.resolve();
+					continue;
 				}
 			}
 
 			const callback = <Callback>(testClass as unknown as TestClassType)[test.name];
-			const res = runTestCase(() => callback(testClassInstance), test);
+			await runTestCase(() => callback(testClassInstance), test).catch(() => {});
 
-			const afterEachCallback = getAnnotation(testClass, Annotation.AfterEach);
-			afterEachCallback.forEach((cb) => cb(testClassInstance));
+			await Promise.try(async () => {
+				const afterEachCallback = getAnnotation(testClass, Annotation.AfterEach);
+				for (const cb of afterEachCallback) {
+					await Promise.try(() => cb(testClassInstance)).catch(() => {});
+				}
+			}).catch(() => {});
 
-			return res;
-		});
-
-		const afterAllCallback = getAnnotation(testClass, Annotation.AfterAll);
-		afterAllCallback.forEach((callback) => callback(testClassInstance));
+			await Promise.try(async () => {
+				const afterAllCallback = getAnnotation(testClass, Annotation.AfterAll);
+				for (const callback of afterAllCallback) {
+					await Promise.try(() => callback(testClassInstance)).catch(() => {});
+				}
+			}).catch(() => {});
+		}
 
 		return testPromises;
 	}
