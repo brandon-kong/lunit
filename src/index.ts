@@ -19,6 +19,5 @@ export {
 export * as Decorators from "./decorators";
 
 export type { Reporter } from "./common";
-export { StringReporter } from "./reporters";
 
 export { Assert } from "./assert";

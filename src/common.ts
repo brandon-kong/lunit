@@ -49,6 +49,7 @@ export interface TestCaseResult {
 	readonly timeElapsed: number;
 	readonly skipped: boolean;
 	readonly className: string;
+	readonly classInstance: object;
 }
 
 export type TestRunOptions = {
@@ -66,10 +67,14 @@ export interface Reporter {
 	onTestStart(testName: string): void;
 	onTestEnd(testName: string, result: TestCaseResult): void;
 
+	onTestPassed(testName: string): void;
 	onTestSkipped(testName: string, reason: string): void;
 	onTestFailed(testName: string, error: string): void;
 
 	getReport(): string;
 }
+
+export type TestClassInstance = Record<string, Callback>;
+export type TestClassConstructor = Constructor<TestClassInstance>;
 
 export const DEFAULT_ORDER: number = 999;

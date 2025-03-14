@@ -1,5 +1,6 @@
-import { TestRunner, StringReporter } from "@rbxts/lunit";
+import { TestRunner } from "@rbxts/lunit";
 import { ReplicatedStorage } from "@rbxts/services";
+import { StringReporter } from "shared/reporter";
 
 const reporter = new StringReporter();
 
@@ -10,6 +11,6 @@ const testRunner = new TestRunner([
     reporter
 })
 
-testRunner.run();
-
-print(reporter.getReport())
+testRunner.run().then(() => {
+    print(reporter.getReport())
+})

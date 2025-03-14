@@ -1,11 +1,11 @@
-import { Reporter, TestCaseResult } from "./common";
-import { getValuesFromMap } from "./utils/array-utils";
+import { Reporter, TestCaseResult } from "@rbxts/lunit/out/common";
+import { getValuesFromMap } from "@rbxts/lunit/out/utils/array-utils";
 
 export class StringReporter implements Reporter {
 	private passedTests = 0;
 	private failedTests = 0;
 	private skippedTests = 0;
-	private results = new Map<string, Map<string, TestCaseResult>>();
+	private results = new Map<LuaTuple<[string, object]>, Map<string, TestCaseResult>>();
 	private startTime = 0;
 	private outputBuffer: string[] = []; // Stores output instead of logging
 
@@ -24,10 +24,12 @@ export class StringReporter implements Reporter {
 	}
 
 	onTestEnd(testName: string, result: TestCaseResult): void {
-		if (!this.results.has(result.className)) {
-			this.results.set(result.className, new Map());
+		const key = <LuaTuple<[string, object]>>[result.className, result.classInstance];
+
+		if (!this.results.has(key)) {
+			this.results.set(key, new Map());
 		}
-		this.results.get(result.className)?.set(testName, result);
+		this.results.get(key)?.set(testName, result);
 
 		if (result.passed) {
 			this.passedTests++;
@@ -36,6 +38,10 @@ export class StringReporter implements Reporter {
 		} else {
 			this.failedTests++;
 		}
+	}
+
+	onTestPassed(testName: string): void {
+		this.outputBuffer.push(`✅ ${testName} PASSED`);
 	}
 
 	onTestSkipped(testName: string, reason: string): void {
@@ -63,13 +69,14 @@ export class StringReporter implements Reporter {
 			return output;
 		}
 
-		this.results.forEach((testCases, className) => {
+		this.results.forEach((testCases, [className]) => {
 			const allTestsPassed = getValuesFromMap(testCases).every((test) => test.passed);
 			const totalTimeElapsed = getValuesFromMap(testCases).reduce((sum, test) => sum + test.timeElapsed, 0);
 
 			output += `[${getSymbol(allTestsPassed)}] ${className} (${math.round(totalTimeElapsed * 1000)}ms)\n`;
 
 			testCases.forEach((testCase, testName) => {
+                print(testCase)
 				const passed = testCase.passed;
 				const skipped = testCase.skipped;
 				const failed = !passed && !skipped;
@@ -116,8 +123,8 @@ export class StringReporter implements Reporter {
 	 * Retrieves the test report as JSON.
 	 * @returns The test results in JSON format.
 	 */
-	public getReportObject(): object {
-		const resultsArray = new Array<{ className: string; tests: object[] }>();
+	public getReportObject() {
+		const resultsArray = new Array<{ className: object; tests: object[] }>();
 
 		this.results.forEach((testCases, className) => {
 			const testsArray = new Array<{

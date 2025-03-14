@@ -7,15 +7,14 @@ import {
 	Environment,
 	TestRunOptions,
 	TestCaseResult,
+	TestClassConstructor,
 } from "./common";
 import { arrayToString, flatten } from "./utils/array-utils";
 import { getDescendantsOfType } from "./utils/instance-utils";
 import StringBuilder from "./utils/string-builder";
 import { getAnnotation, getClassMetadata, hasMetadata } from "./utils/metadata";
-import { StringReporter } from "./reporters";
 
 type TestClassInstance = Record<string, Callback>;
-type TestClassConstructor = Constructor<TestClassInstance>;
 
 const RUN_SERVICE = game.GetService("RunService");
 const IS_CLIENT = RUN_SERVICE.IsClient();
@@ -43,7 +42,6 @@ export class TestRunner {
 		this.skippedTests = 0;
 
 		this.options = options || {};
-		this.options.reporter = this.options.reporter || new StringReporter();
 
 		const modules = flatten(roots.map((root) => getDescendantsOfType(root, "ModuleScript")));
 		for (const module of modules) {
@@ -65,7 +63,7 @@ export class TestRunner {
 		this.testClasses.push([testClass, newClass]);
 	}
 
-	public async run(): Promise<void> {
+	public async run(): Promise<Map<TestClassConstructor, Map<TestMethod, TestCaseResult>>> {
 		const start = os.clock();
 
 		const promisesToResolve: Promise<void>[] = [];
@@ -99,6 +97,8 @@ export class TestRunner {
 			this.options.reporter?.onRunEnd(elapsedTime);
 			print(this.generateOutput(elapsedTime));
 		});
+
+		return Promise.resolve(this.results);
 	}
 
 	private getTestsFromTestClass(testClass: TestClassConstructor): ReadonlyArray<TestMethod> {
@@ -142,6 +142,8 @@ export class TestRunner {
 	}
 
 	private runTestClass(testClass: TestClassConstructor, testClassInstance: TestClassInstance): Promise<void>[] {
+		const testClassMetadata = getClassMetadata(testClass);
+
 		const addResult = (test: TestMethod, result: TestCaseResult) => {
 			let classResults = this.results.get(testClass);
 			if (classResults === undefined) {
@@ -151,12 +153,20 @@ export class TestRunner {
 			}
 
 			classResults.set(test, result);
+
+			this.options.reporter?.onTestEnd(test.options.displayName ?? test.name, {
+				passed: true,
+				timeElapsed: result.timeElapsed,
+				skipped: false,
+				className: testClassMetadata?.displayName ?? tostring(testClass),
+				classInstance: testClassInstance,
+			});
 		};
 
 		const fail = (
 			exception: unknown,
 			test: TestMethod,
-			results: Omit<TestCaseResult, "errorMessage" | "skipped" | "passed" | "className">,
+			results: Omit<TestCaseResult, "errorMessage" | "skipped" | "passed" | "className" | "classInstance">,
 		): void => {
 			this.failedTests++;
 			addResult(test, {
@@ -164,43 +174,41 @@ export class TestRunner {
 				errorMessage: tostring(exception),
 				timeElapsed: results.timeElapsed,
 				skipped: false,
-				className: tostring(testClass),
+				className: testClassMetadata?.displayName ?? tostring(testClass),
+				classInstance: testClassInstance,
 			});
-			this.options.reporter?.onTestFailed(test.name, tostring(exception));
+			this.options.reporter?.onTestFailed(test.options.displayName ?? test.name, tostring(exception));
 		};
 
 		const pass = (
 			test: TestMethod,
-			results: Omit<TestCaseResult, "errorMessage" | "skipped" | "passed" | "className">,
+			results: Omit<TestCaseResult, "errorMessage" | "skipped" | "passed" | "className" | "classInstance">,
 		): void => {
 			this.passedTests++;
 			addResult(test, {
 				passed: true,
 				timeElapsed: results.timeElapsed,
 				skipped: false,
-				className: tostring(testClass),
+				className: testClassMetadata?.displayName ?? tostring(testClass),
+				classInstance: testClassInstance,
 			});
-			this.options.reporter?.onTestEnd(test.name, {
-				passed: true,
-				timeElapsed: results.timeElapsed,
-				skipped: false,
-				className: tostring(testClass),
-			});
+			this.options.reporter?.onTestPassed(test.options.displayName ?? test.name);
 		};
 
 		const skip = (
 			test: TestMethod,
-			results: Omit<TestCaseResult, "errorMessage" | "skipped" | "passed" | "className">,
+			results: Omit<TestCaseResult, "errorMessage" | "skipped" | "passed" | "className" | "classInstance">,
 		): void => {
 			this.skippedTests++;
 			addResult(test, {
 				passed: false,
 				timeElapsed: results.timeElapsed,
 				skipped: true,
-				className: tostring(testClass),
+				className: testClassMetadata?.displayName ?? tostring(testClass),
+				classInstance: testClassInstance,
 			});
 			this.options.reporter?.onTestSkipped(
-				test.name,
+				test.options.displayName ?? test.name,
 				test.options.disabled?.value === true && test.options.disabled?.message !== undefined
 					? test.options.disabled?.message
 					: test.options.environment !== undefined && this.testIsOnRightEnvironment(test.options.environment)
@@ -212,7 +220,7 @@ export class TestRunner {
 		const runTestCase = async (callback: Callback, test: TestMethod): Promise<void> => {
 			const start = os.clock();
 
-			this.options.reporter?.onTestStart(test.name);
+			this.options.reporter?.onTestStart(test.options.displayName ?? test.name);
 
 			if (test.options.timeout !== undefined) {
 				const timeOutSeconds = test.options.timeout / 1000;
