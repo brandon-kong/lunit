@@ -13,7 +13,7 @@
 
 ## Why Use @rbxts/lunit
 
-- **No Dependencies**: The library has no dependencies, making it lightweight and easy to integrate with your current game's game or framework.
+- **No Dependencies**: The library has no dependencies, making it lightweight and easy to integrate with your current game or framework.
 - **Robust Testing**: Comprehensive assertions and easy-to-use functions for thorough testing.
 - **Minimal, But Powerful**: The syntax for writing tests is underwhelming, but it also exposes all sorts of APIs for writing flexible tests.
 
