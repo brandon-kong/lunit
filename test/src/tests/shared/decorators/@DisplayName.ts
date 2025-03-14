@@ -1,16 +1,17 @@
-import { DisplayName, NegativeTest, Tag, Test } from "@rbxts/lunit";
+import { BeforeAll, DisplayName, NegativeTest, Tag, Test } from "@rbxts/lunit";
 
 @DisplayName("@DisplayName Decorator")
 @Tag("Decorator")
 class TestDecoratorUnitTests {
 	@Test
-	@DisplayName("should pass in an empty method")
+	@DisplayName("should diplay this custom name")
 	emptyMethod() {}
 
 	@Test
-	@DisplayName("should fail test")
-	@NegativeTest
-	emptyMethod2() {
+	shouldNotDisplayCustomName() {}
+
+	@BeforeAll
+	beforeAll() {
 		error();
 	}
 }

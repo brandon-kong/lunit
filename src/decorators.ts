@@ -10,7 +10,7 @@ import { createDecorator, createAnnotation } from "./utils/decorator-utils";
  * }
  * ```
  */
-export const Test = createDecorator({ options: { isATest: true, order: DEFAULT_ORDER } });
+export const Test = createDecorator({ options: { isATest: true } });
 
 /**
  * Disables a test case or test class.
