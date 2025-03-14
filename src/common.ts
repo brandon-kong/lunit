@@ -43,4 +43,33 @@ export type DecoratorOptions = {
 	options?: TestMetadataOptions;
 };
 
+export interface TestCaseResult {
+	readonly passed: boolean;
+	readonly errorMessage?: string;
+	readonly timeElapsed: number;
+	readonly skipped: boolean;
+	readonly className: string;
+}
+
+export type TestRunOptions = {
+	filterTags?: string[];
+	reporter?: Reporter;
+};
+
+export interface Reporter {
+	onSuiteStart?(suiteName: string, totalTests: number): void;
+	onSuiteEnd?(suiteName: string, elapsedTime: number): void;
+
+	onRunStart(totalTests: number): void;
+	onRunEnd(elapsedTime: number): void;
+
+	onTestStart(testName: string): void;
+	onTestEnd(testName: string, result: TestCaseResult): void;
+
+	onTestSkipped(testName: string, reason: string): void;
+	onTestFailed(testName: string, error: string): void;
+
+	getReport(): string;
+}
+
 export const DEFAULT_ORDER: number = 999;

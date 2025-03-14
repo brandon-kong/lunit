@@ -1,9 +1,18 @@
-import { Annotation, Constructor, Metadata, TestMethod, DEFAULT_ORDER, Environment } from "./common";
-
-import StringBuilder from "./utils/string-builder";
+import {
+	Annotation,
+	Constructor,
+	Metadata,
+	TestMethod,
+	DEFAULT_ORDER,
+	Environment,
+	TestRunOptions,
+	TestCaseResult,
+} from "./common";
 import { arrayToString, flatten } from "./utils/array-utils";
 import { getDescendantsOfType } from "./utils/instance-utils";
+import StringBuilder from "./utils/string-builder";
 import { getAnnotation, getClassMetadata, hasMetadata } from "./utils/metadata";
+import { StringReporter } from "./reporters";
 
 type TestClassInstance = Record<string, Callback>;
 type TestClassConstructor = Constructor<TestClassInstance>;
@@ -16,17 +25,6 @@ type TestClassType = {
 	[key: string]: unknown;
 };
 
-type TestRunOptions = {
-	filterTags?: string[];
-};
-
-interface TestCaseResult {
-	readonly passed: boolean;
-	readonly errorMessage?: string;
-	readonly timeElapsed: number;
-	readonly skipped: boolean;
-}
-
 export class TestRunner {
 	private readonly testClasses: [TestClassConstructor, TestClassInstance][];
 	private results: Map<TestClassConstructor, Map<TestMethod, TestCaseResult>>;
@@ -35,12 +33,17 @@ export class TestRunner {
 	private passedTests: number;
 	private skippedTests: number;
 
-	public constructor(roots: Instance[], _?: object) {
+	private options: TestRunOptions;
+
+	public constructor(roots: Instance[], options?: TestRunOptions) {
 		this.testClasses = new Array<[TestClassConstructor, TestClassInstance]>();
 		this.results = new Map<TestClassConstructor, Map<TestMethod, TestCaseResult>>();
 		this.failedTests = 0;
 		this.passedTests = 0;
 		this.skippedTests = 0;
+
+		this.options = options || {};
+		this.options.reporter = this.options.reporter || new StringReporter();
 
 		const modules = flatten(roots.map((root) => getDescendantsOfType(root, "ModuleScript")));
 		for (const module of modules) {
@@ -62,10 +65,12 @@ export class TestRunner {
 		this.testClasses.push([testClass, newClass]);
 	}
 
-	public async run(options?: TestRunOptions): Promise<void> {
+	public async run(): Promise<void> {
 		const start = os.clock();
 
 		const promisesToResolve: Promise<void>[] = [];
+
+		this.options.reporter?.onRunStart(this.testClasses.size());
 
 		for (const [testClass, testClassInstance] of this.testClasses) {
 			// Run all beforeAll callbacks before running the tests
@@ -73,7 +78,7 @@ export class TestRunner {
 				const beforeAllCallbacks = getAnnotation(testClass, Annotation.BeforeAll);
 				beforeAllCallbacks.forEach((callback) => callback());
 			} finally {
-				const runClass = this.runTestClass(testClass, testClassInstance, options);
+				const runClass = this.runTestClass(testClass, testClassInstance);
 
 				await Promise.all(runClass).then(() => {
 					runClass.forEach((promise) => {
@@ -90,11 +95,13 @@ export class TestRunner {
 
 		await Promise.all(promisesToResolve).then(() => {
 			const elapsedTime = os.clock() - start;
-			print(this.generateOutput(elapsedTime, options));
+
+			this.options.reporter?.onRunEnd(elapsedTime);
+			print(this.generateOutput(elapsedTime));
 		});
 	}
 
-	private getTestsFromTestClass(testClass: TestClassConstructor, filterTags?: string[]): ReadonlyArray<TestMethod> {
+	private getTestsFromTestClass(testClass: TestClassConstructor): ReadonlyArray<TestMethod> {
 		if (hasMetadata(testClass, Metadata.TestList) === false) return [];
 
 		const list: Map<string, TestMethod> = (testClass as unknown as TestClassType)[Metadata.TestList];
@@ -103,12 +110,12 @@ export class TestRunner {
 		list.forEach((val) => {
 			// Without this, any function with a decorator is marked as a test, even if @Test was not applied
 			if (val.options.isATest === true) {
-				if (filterTags !== undefined) {
+				if (this.options.filterTags !== undefined) {
 					if (val.options.tags !== undefined) {
 						let shouldAdd = false;
 
 						for (const tag of val.options.tags) {
-							if (filterTags.includes(tag)) {
+							if (this.options.filterTags.includes(tag)) {
 								shouldAdd = true;
 							}
 						}
@@ -134,11 +141,7 @@ export class TestRunner {
 		return res;
 	}
 
-	private runTestClass(
-		testClass: TestClassConstructor,
-		testClassInstance: TestClassInstance,
-		options?: TestRunOptions,
-	): Promise<void>[] {
+	private runTestClass(testClass: TestClassConstructor, testClassInstance: TestClassInstance): Promise<void>[] {
 		const addResult = (test: TestMethod, result: TestCaseResult) => {
 			let classResults = this.results.get(testClass);
 			if (classResults === undefined) {
@@ -153,7 +156,7 @@ export class TestRunner {
 		const fail = (
 			exception: unknown,
 			test: TestMethod,
-			results: Omit<TestCaseResult, "errorMessage" | "skipped" | "passed">,
+			results: Omit<TestCaseResult, "errorMessage" | "skipped" | "passed" | "className">,
 		): void => {
 			this.failedTests++;
 			addResult(test, {
@@ -161,29 +164,55 @@ export class TestRunner {
 				errorMessage: tostring(exception),
 				timeElapsed: results.timeElapsed,
 				skipped: false,
+				className: tostring(testClass),
 			});
+			this.options.reporter?.onTestFailed(test.name, tostring(exception));
 		};
 
-		const pass = (test: TestMethod, results: Omit<TestCaseResult, "errorMessage" | "skipped" | "passed">): void => {
+		const pass = (
+			test: TestMethod,
+			results: Omit<TestCaseResult, "errorMessage" | "skipped" | "passed" | "className">,
+		): void => {
 			this.passedTests++;
 			addResult(test, {
 				passed: true,
 				timeElapsed: results.timeElapsed,
 				skipped: false,
+				className: tostring(testClass),
+			});
+			this.options.reporter?.onTestEnd(test.name, {
+				passed: true,
+				timeElapsed: results.timeElapsed,
+				skipped: false,
+				className: tostring(testClass),
 			});
 		};
 
-		const skip = (test: TestMethod, results: Omit<TestCaseResult, "errorMessage" | "skipped" | "passed">): void => {
+		const skip = (
+			test: TestMethod,
+			results: Omit<TestCaseResult, "errorMessage" | "skipped" | "passed" | "className">,
+		): void => {
 			this.skippedTests++;
 			addResult(test, {
 				passed: false,
 				timeElapsed: results.timeElapsed,
 				skipped: true,
+				className: tostring(testClass),
 			});
+			this.options.reporter?.onTestSkipped(
+				test.name,
+				test.options.disabled?.value === true && test.options.disabled?.message !== undefined
+					? test.options.disabled?.message
+					: test.options.environment !== undefined && this.testIsOnRightEnvironment(test.options.environment)
+						? `Test needs to run on ${test.options.environment} environment`
+						: `Test was skipped`,
+			);
 		};
 
 		const runTestCase = async (callback: Callback, test: TestMethod): Promise<void> => {
 			const start = os.clock();
+
+			this.options.reporter?.onTestStart(test.name);
 
 			if (test.options.timeout !== undefined) {
 				const timeOutSeconds = test.options.timeout / 1000;
@@ -195,7 +224,9 @@ export class TestRunner {
 					})
 					.catch(() => {
 						const timeElapsed = os.clock() - start;
-						fail(`Timeout of ${test.options.timeout}ms exceeded`, test, { timeElapsed });
+						fail(`Timeout of ${test.options.timeout}ms exceeded`, test, {
+							timeElapsed,
+						});
 					});
 				return promise;
 			}
@@ -227,7 +258,7 @@ export class TestRunner {
 			return Promise.resolve();
 		};
 
-		const testList = this.getTestsFromTestClass(testClass, options?.filterTags);
+		const testList = this.getTestsFromTestClass(testClass);
 
 		const testPromises = testList.map(async (test) => {
 			await Promise.try(() => {
@@ -243,11 +274,8 @@ export class TestRunner {
 
 			// If the function should run on either the client or server, skip it if it's ran on another boundary
 			if (test.options.environment !== undefined) {
-				const testScope = test.options.environment;
-				if (
-					(IS_CLIENT === false && testScope === Environment.Client) ||
-					(IS_CLIENT === true && testScope === Environment.Server)
-				) {
+				const testEnvironment = test.options.environment;
+				if (!this.testIsOnRightEnvironment(testEnvironment)) {
 					skip(test, { timeElapsed: 0 });
 					return Promise.resolve();
 				}
@@ -268,15 +296,15 @@ export class TestRunner {
 		return testPromises;
 	}
 
-	private generateOutput(elapsedTime: number, options?: TestRunOptions): string {
+	private generateOutput(elapsedTime: number): string {
 		const results = new StringBuilder("\n\n");
 
 		const getSymbol = (passed: boolean, skipped?: boolean) => (skipped === true ? "-" : passed ? "+" : "x");
 
 		const totalTestsRan = this.failedTests + this.passedTests + this.skippedTests;
 
-		if (options?.filterTags !== undefined) {
-			results.appendLine(`Ran filtered tests on the following tags: ${arrayToString(options.filterTags)}`);
+		if (this.options.filterTags !== undefined) {
+			results.appendLine(`Ran filtered tests on the following tags: ${arrayToString(this.options.filterTags)}`);
 			results.appendLine("");
 		}
 
@@ -356,5 +384,12 @@ export class TestRunner {
 		results.appendLine("");
 
 		return results.toString();
+	}
+
+	private testIsOnRightEnvironment(environment: Environment): boolean {
+		return (
+			(IS_CLIENT === true && environment === Environment.Client) ||
+			(IS_CLIENT === false && environment === Environment.Server)
+		);
 	}
 }

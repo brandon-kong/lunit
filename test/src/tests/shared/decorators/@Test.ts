@@ -6,3 +6,5 @@ class TestDecoratorUnitTests {
 	@DisplayName("should pass in an empty method")
 	emptyMethod() {}
 }
+
+export = TestDecoratorUnitTests
