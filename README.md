@@ -68,16 +68,6 @@ const testRunner = new TestRunner([
 testRunner.run();
 ```
 
-This will compile your TypeScript files and run the tests using the Roblox TypeScript compiler.
-
-## Scripts
-
-- `build`: Compiles the TypeScript files using `rbxtsc`.
-- `watch`: Watches for changes and recompiles the TypeScript files.
-- `prepublishOnly`: Runs the build script before publishing.
-- `package`: Builds, packs, and publishes the package.
-- `format`: Formats the code using Prettier.
-
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
