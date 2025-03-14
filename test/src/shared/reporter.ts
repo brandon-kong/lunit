@@ -76,7 +76,6 @@ export class StringReporter implements Reporter {
 			output += `[${getSymbol(allTestsPassed)}] ${className} (${math.round(totalTimeElapsed * 1000)}ms)\n`;
 
 			testCases.forEach((testCase, testName) => {
-                print(testCase)
 				const passed = testCase.passed;
 				const skipped = testCase.skipped;
 				const failed = !passed && !skipped;

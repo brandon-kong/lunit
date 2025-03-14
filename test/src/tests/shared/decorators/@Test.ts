@@ -10,8 +10,8 @@ class TestDecoratorUnitTests {
 	@DisplayName("should fail test")
 	@NegativeTest
 	emptyMethod2() {
-		error()
+		error();
 	}
 }
 
-export = TestDecoratorUnitTests
+export = TestDecoratorUnitTests;

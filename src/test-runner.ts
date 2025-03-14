@@ -28,18 +28,22 @@ export class TestRunner {
 	private readonly testClasses: [TestClassConstructor, TestClassInstance][];
 	private results: Map<TestClassConstructor, Map<TestMethod, TestCaseResult>>;
 
-	private failedTests: number;
-	private passedTests: number;
-	private skippedTests: number;
+	private failedTests: number = 0;
+	private passedTests: number = 0;
+	private skippedTests: number = 0;
 
 	private options: TestRunOptions;
+
+	private resetResults(): void {
+		this.results.clear();
+		this.failedTests = 0;
+		this.passedTests = 0;
+		this.skippedTests = 0;
+	}
 
 	public constructor(roots: Instance[], options?: TestRunOptions) {
 		this.testClasses = new Array<[TestClassConstructor, TestClassInstance]>();
 		this.results = new Map<TestClassConstructor, Map<TestMethod, TestCaseResult>>();
-		this.failedTests = 0;
-		this.passedTests = 0;
-		this.skippedTests = 0;
 
 		this.options = options || {};
 
@@ -64,6 +68,9 @@ export class TestRunner {
 	}
 
 	public async run(): Promise<Map<TestClassConstructor, Map<TestMethod, TestCaseResult>>> {
+		// multiple runs don't accumulate total tests
+		this.resetResults();
+
 		const start = os.clock();
 
 		const promisesToResolve: Promise<void>[] = [];
