@@ -31,7 +31,7 @@ export type TestMetadataOptions = {
 	displayName?: string;
 	environment?: Environment;
 	disabled?: {
-		value: true;
+		value: boolean;
 		message?: string;
 	};
 	timeout?: number;

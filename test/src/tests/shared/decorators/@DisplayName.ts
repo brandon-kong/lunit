@@ -13,11 +13,6 @@ class TestDisplayNameUnitTests {
     @Test
     @DisplayName("")
 	shouldBeEmptyName() {}
-
-	@BeforeAll
-	beforeAll() {
-		error();
-	}
 }
 
 export = TestDisplayNameUnitTests;
