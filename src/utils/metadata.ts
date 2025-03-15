@@ -24,10 +24,11 @@ export function addTest<T extends object>(ctor: T, testName: string, options: Te
 		}
 
 		if (foundOptions !== undefined) {
+			const foundOptionsRecord = foundOptions as { options?: Record<string, unknown> };
 			// create combined options
 			(options as Map<string, unknown>).forEach((value, key) => {
-				if (foundOptions.options !== undefined) {
-					(foundOptions.options as Record<string, unknown>)[key] = value;
+				if (foundOptionsRecord.options !== undefined && foundOptionsRecord.options[key] === undefined) {
+					foundOptionsRecord.options[key] = value;
 				}
 			});
 

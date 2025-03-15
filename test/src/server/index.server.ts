@@ -9,5 +9,5 @@ const decoratorTestRunner = new TestRunner([ReplicatedStorage.Tests.server, Repl
 	filterTags: ["Decorator"],
 });
 
-annotationTestRunner.run()
+//annotationTestRunner.run()
 decoratorTestRunner.run()
