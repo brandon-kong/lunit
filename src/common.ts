@@ -68,8 +68,8 @@ export interface Reporter {
 	onTestEnd(testName: string, result: TestCaseResult): void;
 
 	onTestPassed(testName: string): void;
-	onTestSkipped(testName: string, reason: string): void;
-	onTestFailed(testName: string, error: string): void;
+	onTestSkipped(testName: string, reason?: string): void;
+	onTestFailed(testName: string, error?: string): void;
 
 	getReport(): string;
 }

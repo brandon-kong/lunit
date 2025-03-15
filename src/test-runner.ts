@@ -9,7 +9,7 @@ import {
 	TestCaseResult,
 	TestClassConstructor,
 } from "./common";
-import { arrayToString, flatten, sharesOneElement } from "./utils/array-utils";
+import { arrayToString, flatten, getValuesFromMap, sharesOneElement } from "./utils/array-utils";
 import { getDescendantsOfType } from "./utils/instance-utils";
 import StringBuilder from "./utils/string-builder";
 import { getAnnotation, getClassMetadata, hasMetadata } from "./utils/metadata";
@@ -73,73 +73,41 @@ export class TestRunner {
 
 		const start = os.clock();
 
-		const promisesToResolve: Promise<void>[] = [];
-
 		this.options.reporter?.onRunStart(this.testClasses.size());
 
 		for (const [testClass, testClassInstance] of this.testClasses) {
-			const runClass = await this.runTestClass(testClass, testClassInstance);
-
-			await Promise.all(runClass).then(() => {
-				runClass.forEach((promise) => {
-					promisesToResolve.push(promise);
-				});
-			});
+			await this.runTestClass(testClass, testClassInstance);
 		}
 
-		await Promise.all(promisesToResolve).then(() => {
-			const elapsedTime = os.clock() - start;
+		const elapsedTime = os.clock() - start;
 
-			this.options.reporter?.onRunEnd(elapsedTime);
-			print(this.generateOutput(elapsedTime));
-		});
+		this.options.reporter?.onRunEnd(elapsedTime);
+		print(this.generateOutput(elapsedTime));
 
-		return Promise.resolve(this.results);
+		return this.results;
 	}
 
 	private getTestsFromTestClass(testClass: TestClassConstructor): ReadonlyArray<TestMethod> {
 		if (hasMetadata(testClass, Metadata.TestList) === false) return [];
-		const classMetadata = getClassMetadata(testClass);
-
-		const classTags = classMetadata?.tags ?? [];
-
 		const list: Map<string, TestMethod> = (testClass as unknown as TestClassType)[Metadata.TestList];
 
-		const res = new Array<TestMethod>();
-		list.forEach((val) => {
-			// Without this, any function with a decorator is marked as a test, even if @Test was not applied
-			if (val.options.isATest === true) {
-				if (this.options.filterTags !== undefined) {
-					if (val.options.tags !== undefined || classTags.size() > 0) {
-						let shouldAdd = false;
+		return getValuesFromMap(list)
+			.filter((val) => {
+				if (val.options.isATest !== true) return false;
+				if (this.options.filterTags) {
+					const classMetadata = getClassMetadata(testClass);
 
-						if (sharesOneElement(this.options.filterTags, classTags)) {
-							shouldAdd = true;
-						}
+					const methodTags = val.options.tags ?? [];
+					const classTags = classMetadata?.tags ?? [];
 
-						// add the test if the METHOD is marked as tag
-						if (shouldAdd === false) {
-							if (sharesOneElement(this.options.filterTags, val.options.tags ?? [])) {
-								shouldAdd = true;
-							}
-						}
-
-						if (shouldAdd === true) {
-							res.push(val);
-						}
-					}
-				} else {
-					res.push(val);
+					return (
+						sharesOneElement(this.options.filterTags, classTags) ||
+						sharesOneElement(this.options.filterTags, methodTags)
+					);
 				}
-			}
-		});
-
-		// Order the tests by the order where the default order is 999
-		res.sort((a, b) => {
-			return (a.options.order ?? DEFAULT_ORDER) <= (b.options.order ?? DEFAULT_ORDER);
-		});
-
-		return res;
+				return true;
+			})
+			.sort((a, b) => (a.options.order ?? DEFAULT_ORDER) <= (b.options.order ?? DEFAULT_ORDER));
 	}
 
 	private async runTestClass(
@@ -148,7 +116,7 @@ export class TestRunner {
 	): Promise<Promise<void>[]> {
 		const testClassMetadata = getClassMetadata(testClass);
 
-		const addResult = (test: TestMethod, result: TestCaseResult) => {
+		const addResult = (test: TestMethod, result: Omit<TestCaseResult, "classInstance" | "className">) => {
 			let classResults = this.results.get(testClass);
 			if (classResults === undefined) {
 				const newMap = new Map<TestMethod, TestCaseResult>();
@@ -156,113 +124,84 @@ export class TestRunner {
 				classResults = newMap;
 			}
 
-			classResults.set(test, result);
+			const isNegativeTest = test.options.isNegativeTest;
 
-			this.options.reporter?.onTestEnd(test.options.displayName ?? test.name, {
-				passed: true,
+			const newResult: TestCaseResult = {
+				passed: isNegativeTest === true ? !result.passed : result.passed,
 				timeElapsed: result.timeElapsed,
-				skipped: false,
+				skipped: result.skipped,
 				className: testClassMetadata?.displayName ?? tostring(testClass),
 				classInstance: testClassInstance,
-			});
-		};
+				errorMessage:
+					isNegativeTest === true
+						? !result.passed === true && result.skipped !== true
+							? ""
+							: "Test was marked as a negative test and unexpectedly did not error"
+						: result.errorMessage,
+			};
 
-		const fail = (
-			exception: unknown,
-			test: TestMethod,
-			results: Omit<TestCaseResult, "errorMessage" | "skipped" | "passed" | "className" | "classInstance">,
-		): void => {
-			this.failedTests++;
-			addResult(test, {
-				passed: false,
-				errorMessage: tostring(exception),
-				timeElapsed: results.timeElapsed,
-				skipped: false,
-				className: testClassMetadata?.displayName ?? tostring(testClass),
-				classInstance: testClassInstance,
-			});
-			this.options.reporter?.onTestFailed(test.options.displayName ?? test.name, tostring(exception));
-		};
+			classResults.set(test, newResult);
 
-		const pass = (
-			test: TestMethod,
-			results: Omit<TestCaseResult, "errorMessage" | "skipped" | "passed" | "className" | "classInstance">,
-		): void => {
-			this.passedTests++;
-			addResult(test, {
-				passed: true,
-				timeElapsed: results.timeElapsed,
-				skipped: false,
-				className: testClassMetadata?.displayName ?? tostring(testClass),
-				classInstance: testClassInstance,
-			});
-			this.options.reporter?.onTestPassed(test.options.displayName ?? test.name);
-		};
-
-		const skip = (
-			test: TestMethod,
-			results: Omit<TestCaseResult, "errorMessage" | "skipped" | "passed" | "className" | "classInstance">,
-		): void => {
-			this.skippedTests++;
-			addResult(test, {
-				passed: false,
-				timeElapsed: results.timeElapsed,
-				skipped: true,
-				className: testClassMetadata?.displayName ?? tostring(testClass),
-				classInstance: testClassInstance,
-			});
-			this.options.reporter?.onTestSkipped(
-				test.options.displayName ?? test.name,
-				test.options.disabled?.value === true && test.options.disabled?.message !== undefined
-					? test.options.disabled?.message
-					: test.options.environment !== undefined && this.testIsOnRightEnvironment(test.options.environment)
-						? `Test needs to run on ${test.options.environment} environment`
-						: `Test was skipped`,
-			);
-		};
-
-		const runTestCase = async (callback: Callback, test: TestMethod): Promise<void> => {
-			const start = os.clock();
-
-			this.options.reporter?.onTestStart(test.options.displayName ?? test.name);
-
-			if (test.options.timeout !== undefined) {
-				const timeOutSeconds = test.options.timeout / 1000;
-				try {
-					await Promise.try(callback).timeout(timeOutSeconds);
-					const timeElapsed = os.clock() - start;
-					pass(test, { timeElapsed });
-				} catch (e) {
-					const timeElapsed = os.clock() - start;
-					fail(`Timeout of ${test.options.timeout}ms exceeded`, test, {
-						timeElapsed,
-					});
-				}
-				return;
+			switch (result.passed) {
+				case true:
+					this.passedTests++;
+					this.options.reporter?.onTestPassed(test.options.displayName ?? test.name);
+					break;
+				case false:
+					if (result.skipped === true) {
+						this.skippedTests++;
+						this.options.reporter?.onTestSkipped(
+							test.options.displayName ?? test.name,
+							result.errorMessage,
+						);
+					} else {
+						this.failedTests++;
+						this.options.reporter?.onTestFailed(test.options.displayName ?? test.name, result.errorMessage);
+					}
 			}
+
+			this.options.reporter?.onTestEnd(test.options.displayName ?? test.name, newResult);
+		};
+
+		const handleTestResult = async (test: TestMethod, callback: Callback) => {
+			const start = os.clock();
+			const timeout = test.options.timeout;
 
 			try {
-				await callback();
+				if (timeout !== undefined) {
+					const [status] = Promise.try(callback)
+						.timeout(timeout / 1000)
+						.awaitStatus();
+
+					const timeElapsed = os.clock() - start;
+					if (status === "Resolved") {
+						addResult(test, { passed: true, timeElapsed, skipped: false });
+					} else {
+						addResult(test, {
+							passed: false,
+							timeElapsed,
+							skipped: false,
+							errorMessage: `Test exceeded timeout of ${timeout}ms`,
+						});
+					}
+				} else {
+					await callback();
+					const timeElapsed = os.clock() - start;
+					addResult(test, { passed: true, timeElapsed, skipped: false });
+				}
 			} catch (e) {
 				const timeElapsed = os.clock() - start;
-
-				if (test.options.isNegativeTest === true) {
-					// pass the test if it is negative
-					pass(test, { timeElapsed });
-				} else {
-					fail(e, test, { timeElapsed });
-				}
-				return;
+				addResult(test, {
+					passed: false,
+					errorMessage: tostring(e),
+					timeElapsed,
+					skipped: false,
+				});
 			}
+		};
 
-			const timeElapsed = os.clock() - start;
-
-			if (test.options.isNegativeTest === true) {
-				// fail the test if it is negative
-				fail(`Test was marked as a negative test and unexpectedly did not error`, test, { timeElapsed });
-			} else {
-				pass(test, { timeElapsed });
-			}
+		const skipTest = async (test: TestMethod, reason: string = "") => {
+			addResult(test, { passed: false, skipped: true, timeElapsed: 0 });
 		};
 
 		const testList = this.getTestsFromTestClass(testClass);
@@ -274,7 +213,7 @@ export class TestRunner {
 			await this.runAnnotatedMethods(testClass, testClassInstance, Annotation.BeforeEach);
 
 			if (test.options.disabled?.value === true) {
-				skip(test, { timeElapsed: 0 });
+				skipTest(test, test.options.disabled.message);
 				continue;
 			}
 
@@ -282,13 +221,13 @@ export class TestRunner {
 			if (test.options.environment !== undefined) {
 				const testEnvironment = test.options.environment;
 				if (!this.testIsOnRightEnvironment(testEnvironment)) {
-					skip(test, { timeElapsed: 0 });
+					skipTest(test, `Test needs to run on ${test.options.environment} environment`);
 					continue;
 				}
 			}
 
 			const callback = <Callback>(testClass as unknown as TestClassType)[test.name];
-			await runTestCase(() => callback(testClassInstance), test).catch(() => {});
+			await handleTestResult(test, () => callback(testClassInstance)).catch(() => {});
 
 			await this.runAnnotatedMethods(testClass, testClassInstance, Annotation.AfterEach);
 		}
@@ -314,7 +253,7 @@ export class TestRunner {
 	private generateOutput(elapsedTime: number): string {
 		const results = new StringBuilder("\n\n");
 
-		const getSymbol = (passed: boolean, skipped?: boolean) => (skipped === true ? "-" : passed ? "+" : "x");
+		const getSymbol = (passed: boolean, skipped?: boolean) => (skipped === true ? "⏭️" : passed ? "✅" : "❌");
 
 		const totalTestsRan = this.failedTests + this.passedTests + this.skippedTests;
 
@@ -356,7 +295,7 @@ export class TestRunner {
 				testResults.push([key, value]);
 			});
 
-			const allTestsPassed = testResults.every(([_, cases]) => cases.errorMessage === undefined);
+			const allTestsPassed = testResults.every(([_, cases]) => cases.passed === true);
 			const totalTimeElapsed = testResults.map(([_, val]) => val.timeElapsed).reduce((sum, n) => sum + n);
 
 			results.appendLine(
@@ -376,8 +315,8 @@ export class TestRunner {
 			let failureIndex = 0;
 
 			for (const [className, testResults] of pairs(this.results)) {
-				for (const [testCaseName, { errorMessage }] of pairs(testResults)) {
-					if (errorMessage === undefined) continue;
+				for (const [testCaseName, { errorMessage, passed }] of pairs(testResults)) {
+					if (passed === true || errorMessage === undefined) continue;
 					results.appendLine(`${++failureIndex}. ${className}.${testCaseName.name}`);
 
 					const errorDisplay = tostring(errorMessage)
