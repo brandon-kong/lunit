@@ -1,4 +1,4 @@
-import { Assert, BeforeAll, BeforeEach, DisplayName, Order, Tag, Test } from "@rbxts/lunit";
+import { AfterAll, AfterEach, Assert, BeforeAll, BeforeEach, DisplayName, Order, Tag, Test } from "@rbxts/lunit";
 
 @DisplayName("Annotation Tests")
 @Tag("Annotation")
@@ -48,6 +48,21 @@ class TestDecoratorUnitTests {
 	@BeforeEach
 	beforeEachShouldErrorAndBeOkay() {
 		error();
+	}
+
+	@AfterEach
+	afterEachShouldBeOkay() {
+		print("This prints after EACH test");
+	}
+
+	@AfterEach
+	afterEachShouldErrorAndBeOkay() {
+		error();
+	}
+
+	@AfterAll
+	afterAllShouldBeOkay() {
+		print("This prints after ALL tests");
 	}
 }
 

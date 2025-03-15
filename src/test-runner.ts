@@ -84,11 +84,6 @@ export class TestRunner {
 				runClass.forEach((promise) => {
 					promisesToResolve.push(promise);
 				});
-
-				Promise.try(() => {
-					const afterAllCallbacks = getAnnotation(testClass, Annotation.AfterAll);
-					afterAllCallbacks.forEach((callback) => callback());
-				});
 			});
 		}
 
@@ -272,21 +267,11 @@ export class TestRunner {
 
 		const testList = this.getTestsFromTestClass(testClass);
 
-		await Promise.try(async () => {
-			const beforeAllCallbacks = getAnnotation(testClass, Annotation.BeforeAll);
-			for (const callback of beforeAllCallbacks) {
-				await Promise.try(() => callback(testClassInstance)).catch(() => {});
-			}
-		}).catch(() => {});
+		await this.runAnnotatedMethods(testClass, testClassInstance, Annotation.BeforeAll);
 
 		const testPromises: Promise<void>[] = [];
 		for (const test of testList) {
-			await Promise.try(async () => {
-				const beforeEachCallbacks = getAnnotation(testClass, Annotation.BeforeEach);
-				for (const callback of beforeEachCallbacks) {
-					await Promise.try(() => callback(testClassInstance)).catch(() => {});
-				}
-			}).catch(() => {});
+			await this.runAnnotatedMethods(testClass, testClassInstance, Annotation.BeforeEach);
 
 			if (test.options.disabled?.value === true) {
 				skip(test, { timeElapsed: 0 });
@@ -305,22 +290,25 @@ export class TestRunner {
 			const callback = <Callback>(testClass as unknown as TestClassType)[test.name];
 			await runTestCase(() => callback(testClassInstance), test).catch(() => {});
 
-			await Promise.try(async () => {
-				const afterEachCallback = getAnnotation(testClass, Annotation.AfterEach);
-				for (const cb of afterEachCallback) {
-					await Promise.try(() => cb(testClassInstance)).catch(() => {});
-				}
-			}).catch(() => {});
-
-			await Promise.try(async () => {
-				const afterAllCallback = getAnnotation(testClass, Annotation.AfterAll);
-				for (const callback of afterAllCallback) {
-					await Promise.try(() => callback(testClassInstance)).catch(() => {});
-				}
-			}).catch(() => {});
+			await this.runAnnotatedMethods(testClass, testClassInstance, Annotation.AfterEach);
 		}
 
+		await this.runAnnotatedMethods(testClass, testClassInstance, Annotation.AfterAll);
+
 		return testPromises;
+	}
+
+	private async runAnnotatedMethods(
+		testClass: TestClassConstructor,
+		testClassInstance: TestClassInstance,
+		annotation: Annotation,
+	): Promise<void> {
+		return Promise.try(async () => {
+			const afterAllCallback = getAnnotation(testClass, annotation);
+			for (const callback of afterAllCallback) {
+				await Promise.try(() => callback(testClassInstance)).catch(() => {});
+			}
+		}).catch(() => {});
 	}
 
 	private generateOutput(elapsedTime: number): string {
