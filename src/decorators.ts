@@ -204,7 +204,23 @@ export const NegativeTest = createDecorator({
 	options: { isNegativeTest: true },
 });
 
+/**
+ * Conditionally skips a test case or test class.
+ * @param condition - A boolean condition to determine if the test should be skipped.
+ * @param message - An optional message explaining why the test is skipped.
+ * @example
+ * ```typescript
+ * @Skip(process.env.NODE_ENV === 'production', "Skip in production environment")
+ * public myTest() {
+ *   // test code here
+ * }
+ * ```
+ */
+export const Skip = (condition: boolean, message?: string) =>
+	createDecorator({ options: { disabled: { value: condition, message } } });
+
 export default {
+	// Test property decorators
 	Test,
 	Disabled,
 	DisplayName,
@@ -212,13 +228,15 @@ export default {
 	Order,
 	Server,
 	Client,
+	Tag,
+	NegativeTest,
+	Skip,
+
+	// Test execution lifecycle decorators
 	Before,
 	BeforeAll,
 	BeforeEach,
 	After,
 	AfterEach,
 	AfterAll,
-
-	Tag,
-	NegativeTest,
 };

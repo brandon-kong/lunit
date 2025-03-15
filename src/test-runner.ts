@@ -57,12 +57,15 @@ export class TestRunner {
 	private addClass(ctor: Constructor): void {
 		if (ctor === undefined || (ctor as unknown as { new: unknown }).new === undefined) return;
 
+		if (this.options.filterTags !== undefined) {
+			const classMetadata = getClassMetadata(ctor);
+			if (!sharesOneElement(this.options.filterTags, classMetadata?.tags ?? [])) {
+				return;
+			}
+		}
+
 		const testClass = <TestClassConstructor>ctor;
 		const newClass = <TestClassInstance>new ctor();
-
-		if (newClass.setUp !== undefined) {
-			newClass.setUp(newClass);
-		}
 
 		this.testClasses.push([testClass, newClass]);
 	}
