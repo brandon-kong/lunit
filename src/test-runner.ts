@@ -127,7 +127,7 @@ export class TestRunner {
 			const isNegativeTest = test.options.isNegativeTest;
 
 			const newResult: TestCaseResult = {
-				passed: isNegativeTest === true ? !result.passed : result.passed,
+				passed: isNegativeTest === true && result.skipped === false ? !result.passed : result.passed,
 				timeElapsed: result.timeElapsed,
 				skipped: result.skipped,
 				className: testClassMetadata?.displayName ?? tostring(testClass),
@@ -142,21 +142,24 @@ export class TestRunner {
 
 			classResults.set(test, newResult);
 
-			switch (result.passed) {
+			switch (newResult.passed) {
 				case true:
 					this.passedTests++;
 					this.options.reporter?.onTestPassed(test.options.displayName ?? test.name);
 					break;
 				case false:
-					if (result.skipped === true) {
+					if (newResult.skipped === true) {
 						this.skippedTests++;
 						this.options.reporter?.onTestSkipped(
 							test.options.displayName ?? test.name,
-							result.errorMessage,
+							newResult.errorMessage,
 						);
 					} else {
 						this.failedTests++;
-						this.options.reporter?.onTestFailed(test.options.displayName ?? test.name, result.errorMessage);
+						this.options.reporter?.onTestFailed(
+							test.options.displayName ?? test.name,
+							newResult.errorMessage,
+						);
 					}
 			}
 
@@ -201,7 +204,7 @@ export class TestRunner {
 		};
 
 		const skipTest = async (test: TestMethod, reason: string = "") => {
-			addResult(test, { passed: false, skipped: true, timeElapsed: 0 });
+			addResult(test, { passed: false, skipped: true, timeElapsed: 0, errorMessage: reason });
 		};
 
 		const testList = this.getTestsFromTestClass(testClass);
@@ -295,11 +298,11 @@ export class TestRunner {
 				testResults.push([key, value]);
 			});
 
-			const allTestsPassed = testResults.every(([_, cases]) => cases.passed === true);
+			const someTestsFailed = testResults.some(([_, cases]) => cases.passed === false && cases.skipped === false);
 			const totalTimeElapsed = testResults.map(([_, val]) => val.timeElapsed).reduce((sum, n) => sum + n);
 
 			results.appendLine(
-				`[${getSymbol(allTestsPassed)}] ${className} (${math.round(totalTimeElapsed * 1000)}ms)`,
+				`[${getSymbol(!someTestsFailed)}] ${className} (${math.round(totalTimeElapsed * 1000)}ms)`,
 			);
 
 			testResults.forEach((testResult, index) => {
