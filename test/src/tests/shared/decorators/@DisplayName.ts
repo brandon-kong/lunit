@@ -10,8 +10,8 @@ class TestDisplayNameUnitTests {
 	@Test
 	shouldNotDisplayCustomName() {}
 
-    @Test
-    @DisplayName("")
+	@Test
+	@DisplayName("")
 	shouldBeEmptyName() {}
 }
 

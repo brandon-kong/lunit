@@ -9,9 +9,8 @@ class TestDecoratorUnitTests {
 	@Order(1)
 	async testShouldPass() {
 		Assert.true(this.something);
-        await Promise.delay(5)
-        print("1st");
-
+		await Promise.delay(5);
+		print("1st");
 	}
 
 	@Test

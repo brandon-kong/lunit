@@ -10,4 +10,4 @@ const decoratorTestRunner = new TestRunner([ReplicatedStorage.Tests.server, Repl
 });
 
 //annotationTestRunner.run()
-decoratorTestRunner.run()
+decoratorTestRunner.run();
