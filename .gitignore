@@ -6,4 +6,4 @@
 *.tgz
 *.rbxl.lock
 
-.vitepress/cache
+docs/.vitepress/cache/*
