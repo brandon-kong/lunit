@@ -4,6 +4,7 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: "@rbxts/lunit",
   description: "A robust TypeScript testing library for Roblox-TS projects",
+  base: "/lunit/",
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
