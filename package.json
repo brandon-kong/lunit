@@ -8,7 +8,10 @@
 		"prepublishOnly": "npm run build",
 		"package": "npm run build && npm pack && npm publish",
 		"format": "prettier --write .",
-		"install-test": "npm run build && npm pack && mv rbxts-lunit-*.tgz test/rbxts-lunit.tgz && cd test && npm install rbx-lunit.tgz || move rbxts-lunit-*.tgz test\\rbxts-lunit.tgz && cd test && npm install rbxts-lunit.tgz"
+		"install-test": "npm run build && npm pack && mv rbxts-lunit-*.tgz test/rbxts-lunit.tgz && cd test && npm install rbx-lunit.tgz || move rbxts-lunit-*.tgz test\\rbxts-lunit.tgz && cd test && npm install rbxts-lunit.tgz",
+		"docs:dev": "vitepress dev ./docs",
+		"docs:build": "vitepress build ./docs",
+		"docs:preview": "vitepress preview ./docs"
 	},
 	"keywords": [],
 	"author": "",
@@ -36,6 +39,7 @@
 		"eslint-plugin-roblox-ts": "^0.0.36",
 		"prettier": "^3.5.3",
 		"roblox-ts": "^3.0.0",
-		"typescript": "^5.8.2"
+		"typescript": "^5.8.2",
+		"vitepress": "^1.6.3"
 	}
 }
