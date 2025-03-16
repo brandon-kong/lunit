@@ -25,5 +25,5 @@
 		"declaration": true
 	},
 
-	"exclude": ["out", "test", "scripts"]
+	"exclude": ["out", "test", "scripts", "docs"]
 }
