@@ -8,18 +8,18 @@ hero:
   tagline: My great project tagline
   actions:
     - theme: brand
-      text: Markdown Examples
-      link: /markdown-examples
+      text: Get Started
+      link: /getting-started
     - theme: alt
-      text: API Examples
-      link: /api-examples
+      text: API Reference
+      link: /api-reference
 
 features:
-  - title: Feature A
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature B
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature C
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
+  - title: Easy to Use
+    details: LUnit provides an intuitive and lightweight assertion system, making it easy to write and understand tests.
+  - title: Roblox-TS Ecosystem
+    details: The library integrates seamlessly with Roblox-TS, allowing developers to write tests using TypeScript while targeting the Roblox game engine.
+  - title: Batteries-included
+    details: Supports various testing patterns, including unit tests, integration tests, and performance benchmarks.
 ---
 

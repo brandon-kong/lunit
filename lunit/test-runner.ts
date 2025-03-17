@@ -32,7 +32,7 @@ export class TestRunner {
 	private passedTests: number = 0;
 	private skippedTests: number = 0;
 
-	private options: TestRunOptions;
+	private options: TestRunOptions = {};
 
 	private resetResults(): void {
 		this.results.clear();
@@ -41,11 +41,9 @@ export class TestRunner {
 		this.skippedTests = 0;
 	}
 
-	public constructor(roots: Instance[], options?: TestRunOptions) {
+	public constructor(roots: Instance[]) {
 		this.testClasses = new Array<[TestClassConstructor, TestClassInstance]>();
 		this.results = new Map<TestClassConstructor, Map<TestMethod, TestCaseResult>>();
-
-		this.options = options || {};
 
 		const modules = flatten(roots.map((root) => getDescendantsOfType(root, "ModuleScript")));
 		for (const module of modules) {
@@ -57,12 +55,14 @@ export class TestRunner {
 	private addClass(ctor: Constructor): void {
 		if (ctor === undefined || (ctor as unknown as { new: unknown }).new === undefined) return;
 
-		if (this.options.filterTags !== undefined) {
+		/*
+		if (this.options.tags !== undefined) {
 			const classMetadata = getClassMetadata(ctor);
-			if (!sharesOneElement(this.options.filterTags, classMetadata?.tags ?? [])) {
+			if (!sharesOneElement(this.options.tags, classMetadata?.tags ?? [])) {
 				return;
 			}
 		}
+		*/
 
 		const testClass = <TestClassConstructor>ctor;
 		const newClass = <TestClassInstance>new ctor();
@@ -70,8 +70,10 @@ export class TestRunner {
 		this.testClasses.push([testClass, newClass]);
 	}
 
-	public async run(): Promise<Map<TestClassConstructor, Map<TestMethod, TestCaseResult>>> {
+	public async run(options?: TestRunOptions): Promise<Map<TestClassConstructor, Map<TestMethod, TestCaseResult>>> {
 		// multiple runs don't accumulate total tests
+		this.options = options ?? {};
+
 		this.resetResults();
 
 		const start = os.clock();
@@ -79,7 +81,7 @@ export class TestRunner {
 		this.options.reporter?.onRunStart(this.testClasses.size());
 
 		for (const [testClass, testClassInstance] of this.testClasses) {
-			await this.runTestClass(testClass, testClassInstance);
+			await this.runTestClass(testClass, testClassInstance, options);
 		}
 
 		const elapsedTime = os.clock() - start;
@@ -90,23 +92,20 @@ export class TestRunner {
 		return this.results;
 	}
 
-	private getTestsFromTestClass(testClass: TestClassConstructor): ReadonlyArray<TestMethod> {
+	private getTestsFromTestClass(testClass: TestClassConstructor, tags: string[]): ReadonlyArray<TestMethod> {
 		if (hasMetadata(testClass, Metadata.TestList) === false) return [];
 		const list: Map<string, TestMethod> = (testClass as unknown as TestClassType)[Metadata.TestList];
 
 		return getValuesFromMap(list)
 			.filter((val) => {
 				if (val.options.isATest !== true) return false;
-				if (this.options.filterTags) {
+				if (tags.size() > 0) {
 					const classMetadata = getClassMetadata(testClass);
 
 					const methodTags = val.options.tags ?? [];
 					const classTags = classMetadata?.tags ?? [];
 
-					return (
-						sharesOneElement(this.options.filterTags, classTags) ||
-						sharesOneElement(this.options.filterTags, methodTags)
-					);
+					return sharesOneElement(tags, classTags) || sharesOneElement(tags, methodTags);
 				}
 				return true;
 			})
@@ -116,6 +115,7 @@ export class TestRunner {
 	private async runTestClass(
 		testClass: TestClassConstructor,
 		testClassInstance: TestClassInstance,
+		options?: TestRunOptions,
 	): Promise<Promise<void>[]> {
 		const testClassMetadata = getClassMetadata(testClass);
 
@@ -127,16 +127,16 @@ export class TestRunner {
 				classResults = newMap;
 			}
 
-			const isNegativeTest = test.options.isNegativeTest;
+			const isNegated = test.options.negated;
 
 			const newResult: TestCaseResult = {
-				passed: isNegativeTest === true && result.skipped === false ? !result.passed : result.passed,
+				passed: isNegated === true && result.skipped === false ? !result.passed : result.passed,
 				timeElapsed: result.timeElapsed,
 				skipped: result.skipped,
 				className: testClassMetadata?.displayName ?? tostring(testClass),
 				classInstance: testClassInstance,
 				errorMessage:
-					isNegativeTest === true
+					isNegated === true
 						? !result.passed === true && result.skipped !== true
 							? ""
 							: "Test was marked as a negative test and unexpectedly did not error"
@@ -210,7 +210,7 @@ export class TestRunner {
 			addResult(test, { passed: false, skipped: true, timeElapsed: 0, errorMessage: reason });
 		};
 
-		const testList = this.getTestsFromTestClass(testClass);
+		const testList = this.getTestsFromTestClass(testClass, options?.tags ?? []);
 
 		await this.runAnnotatedMethods(testClass, testClassInstance, Annotation.BeforeAll);
 
@@ -263,8 +263,8 @@ export class TestRunner {
 
 		const totalTestsRan = this.failedTests + this.passedTests + this.skippedTests;
 
-		if (this.options.filterTags !== undefined) {
-			results.appendLine(`Ran filtered tests on the following tags: ${arrayToString(this.options.filterTags)}`);
+		if (this.options.tags !== undefined) {
+			results.appendLine(`Ran filtered tests on the following tags: ${arrayToString(this.options.tags)}`);
 			results.appendLine("");
 		}
 

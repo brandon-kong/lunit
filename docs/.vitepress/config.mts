@@ -14,16 +14,36 @@ export default defineConfig({
 
     sidebar: [
       {
-        text: 'Examples',
+        text: 'Introduction',
         items: [
-          { text: 'Markdown Examples', link: '/markdown-examples' },
-          { text: 'Runtime API Examples', link: '/api-examples' }
+          { text: 'Getting Started', link: '/getting-started' },
         ]
-      }
+      },
+      {
+        text: 'Guides',
+        items: [
+          { text: 'Decorators', link: '/guides/decorators' },
+          { text: 'Assertions', link: '/guides/assertions' },
+          { text: 'Test Suites', link: '/guides/test-suites' },
+          { text: 'Test Runners', link: '/guides/test-runners' },
+        ]
+      },
+
+      {
+        text: 'Creating and Running Tests',
+        items: [
+          { text: 'Creating Tests', link: '/creating-tests' },
+          { text: 'Test Suites', link: '/creating-tests/test-suites' },
+        ]
+      },
+      
+      { text: 'API Reference', link: '/api-reference' },
+      { text: 'Contributing', link: '/contributing' },
+
     ],
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/vuejs/vitepress' }
+      { icon: 'github', link: 'https://github.com/brandon-kong/lunit' }
     ]
   }
 })

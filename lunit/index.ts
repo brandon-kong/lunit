@@ -14,7 +14,7 @@ export {
 	BeforeAll,
 	BeforeEach,
 	Tag,
-	NegativeTest,
+	Negated,
 } from "./decorators";
 export * as Decorators from "./decorators";
 

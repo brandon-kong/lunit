@@ -25,7 +25,7 @@ export enum Environment {
 }
 
 export type TestMetadataOptions = {
-	isNegativeTest?: boolean;
+	negated?: boolean;
 	tags?: string[];
 	isATest?: boolean;
 	displayName?: string;
@@ -53,7 +53,7 @@ export interface TestCaseResult {
 }
 
 export type TestRunOptions = {
-	filterTags?: string[];
+	tags?: string[];
 	reporter?: Reporter;
 };
 
