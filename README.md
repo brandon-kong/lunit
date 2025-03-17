@@ -1,3 +1,4 @@
+[NPM Registry](https://npmjs.org/@rbxts/lunit)
 # @rbxts/lunit
 
 @rbxts/lunit is a testing library for Roblox TypeScript projects, providing a simple and efficient way to write and run tests.
