@@ -5,7 +5,7 @@ import { Decorators } from "@rbxts/lunit";
 class TestTimeoutUnitTests {
 	@Decorators.Test
 	@Decorators.Timeout(1 * 1000) // 1 seconds
-	@Decorators.NegativeTest
+	@Decorators.Negated
 	@Decorators.DisplayName("should fail the test after timeout exceeded")
 	emptyMethod() {
 		task.wait(5);

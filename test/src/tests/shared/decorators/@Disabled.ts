@@ -1,6 +1,6 @@
-import { Disabled, DisplayName, NegativeTest, Tag, Test } from "@rbxts/lunit";
+import { Disabled, DisplayName, Tag, Test } from "@rbxts/lunit";
 
-@DisplayName("@Test Decorator")
+@DisplayName("@Disabled Decorator")
 @Tag("Decorator")
 class TestDecoratorUnitTests {
 	@Test
