@@ -1,4 +1,4 @@
-import { DisplayName, NegativeTest, Tag, Test } from "@rbxts/lunit";
+import { DisplayName, Negated, Tag, Test } from "@rbxts/lunit";
 
 @DisplayName("@Test Decorator")
 @Tag("Decorator")
@@ -9,7 +9,7 @@ class TestDecoratorUnitTests {
 
 	@Test
 	@DisplayName("should fail test")
-	@NegativeTest
+	@Negated
 	emptyMethod2() {
 		error();
 	}
