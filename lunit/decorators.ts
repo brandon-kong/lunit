@@ -212,8 +212,15 @@ export const Negated = createDecorator({
  * }
  * ```
  */
-export const Skip = (condition: boolean, message?: string) =>
-	createDecorator({ options: { disabled: { value: condition, message } } });
+export const Skip = (condition: boolean | (() => boolean), message?: string) =>
+	createDecorator({
+		options: {
+			disabled: {
+				value: type(condition) === "boolean" ? (condition as boolean) : (condition as () => boolean)(),
+				message,
+			},
+		},
+	});
 
 export default {
 	// Test property decorators

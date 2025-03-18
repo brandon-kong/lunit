@@ -285,4 +285,88 @@ testRunner.run({
 });
 ```
 
+In this example, only the test cases with the `math` tag will be run.
+
+---
+
+### `@Server`
+
+The `@Server` decorator is used to mark a test case as a server test case. Server test cases can only be ran on the server side of the Roblox game engine. This can be useful when you want to test server-specific functionality or interactions.
+
+```ts
+class TestSum {
+    @Server
+    public serverTest() {
+        // This test case will only run on the server side
+    }
+}
+```
+
+If you do not specify a test case as a server test case, it will run on either the client or server side, depending on the context in which the test suite is executed.
+
+If you run a test suite with server test cases on the client side, the server test cases will be skipped.
+
+---
+
+### `@Client`
+
+The `@Client` decorator is used to mark a test case as a client test case. Client test cases can only be ran on the client side of the Roblox game engine. This can be useful when you want to test client-specific functionality or interactions.
+
+```ts
+class TestSum {
+    @Client
+    public clientTest() {
+        // This test case will only run on the client side
+    }
+}
+```
+
+If you do not specify a test case as a client test case, it will run on either the client or server side, depending on the context in which the test suite is executed.
+
+If you run a test suite with client test cases on the server side, the client test cases will be skipped.
+
+### `@Order`
+
+The `@Order` decorator is used to specify the order in which test cases should be run within a test suite. By default, test cases are ran in an arbitrary order. You can use the `@Order` decorator to override this default order.
+
+This decorator takes an order value as a parameter. Test cases are ran in ascending order of their order values.
+
+```ts
+class TestSum {
+    @Order(1)
+    public test1() {
+        // This test case will be ran first
+    }
+
+    @Order(2)
+    public test2() {
+        // This test case will be ran second
+    }
+}
+```
+
+### `@Skip`
+
+The `@Skip` decorator is used to skip a test case based on a condition. This can be useful when you want to skip a test case based on certain criteria, such as the environment in which the test suite is executed.
+
+This decorator takes a `boolean` OR a `condition function` as a parameter. The condition function should return a boolean value that determines whether the test case should be skipped.
+
+A second parameter can be provided to specify a message that explains why the test case was skipped.
+
+```ts
+const RUN_TESTS = false;
+
+class TestSum {
+    @Skip(RUN_TESTS) // This test case will be skipped
+    public windowsOnlyTest() {
+        // This test case will be skipped on Windows
+    }
+
+    @Skip(() => !RUN_TESTS, "This test case is enabled because !RUN_TESTS is true")
+    public disabledTest() {
+        // This test case will be skipped
+    }
+}
+```
+
 #
