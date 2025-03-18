@@ -28,6 +28,7 @@
 	"repository": {
 		"url": "https://github.com/brandon-kong/lunit"
 	},
+	"homepage": "https://github.brandondkong.com/lunit",
 	"devDependencies": {
 		"@rbxts/compiler-types": "^3.0.0-types.0",
 		"@rbxts/types": "^1.0.840",

@@ -5,7 +5,7 @@ layout: home
 hero:
   name: "@rbxts/lunit"
   text: "A robust TypeScript testing library for Roblox-TS projects"
-  tagline: My great project tagline
+  tagline: "Simple and efficient testing for Roblox-TS projects"
   actions:
     - theme: brand
       text: Get Started

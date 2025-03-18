@@ -1,5 +1,6 @@
-import { Annotation, DEFAULT_ORDER, Environment } from "./common";
+import { Annotation, Environment, MethodDecorator } from "./common";
 import { createDecorator, createAnnotation } from "./utils/decorator-utils";
+
 /**
  * Marks a method as a test case.
  * @example
@@ -202,7 +203,7 @@ export const Negated = createDecorator({
 
 /**
  * Conditionally skips a test case or test class.
- * @param condition - A boolean condition to determine if the test should be skipped.
+ * @param condition - A boolean condition or a function returning a boolean to determine if the test should be skipped.
  * @param message - An optional message explaining why the test is skipped.
  * @example
  * ```typescript
@@ -212,8 +213,18 @@ export const Negated = createDecorator({
  * }
  * ```
  */
-export const Skip = (condition: boolean, message?: string) =>
-	createDecorator({ options: { disabled: { value: condition, message } } });
+export function Skip(condition: boolean): MethodDecorator;
+export function Skip(condition: () => boolean): MethodDecorator;
+export function Skip(condition: boolean | (() => boolean), message?: string): MethodDecorator {
+	return createDecorator({
+		options: {
+			disabled: {
+				value: type(condition) === "boolean" ? (condition as boolean) : (condition as () => boolean)(),
+				message,
+			},
+		},
+	});
+}
 
 export default {
 	// Test property decorators
