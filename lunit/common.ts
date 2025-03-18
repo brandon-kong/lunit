@@ -1,3 +1,5 @@
+export type MethodDecorator<T = object> = (ctor: T, propertyKey?: string) => void;
+
 export type TestMethod = {
 	name: string;
 	options: TestMetadataOptions;
